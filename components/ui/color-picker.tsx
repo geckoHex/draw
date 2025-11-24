@@ -56,7 +56,7 @@ export function ColorPicker({ value, onChange, triggerClassName }: ColorPickerPr
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)]" align="center">
+      <PopoverContent className="w-(--radix-popover-trigger-width)" align="center">
         <div className="grid grid-cols-6 gap-3">
           {PRESET_COLORS.map((color) => (
             <button

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
@@ -20,12 +20,6 @@ export function RenameBoardModal({
 }: RenameBoardModalProps) {
   const [name, setName] = useState(initialName)
 
-  useEffect(() => {
-    if (isOpen) {
-      setName(initialName)
-    }
-  }, [isOpen, initialName])
-
   const handleSave = () => {
     if (name.trim()) {
       onSave(name.trim())
@@ -44,7 +38,7 @@ export function RenameBoardModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div key={initialName} className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -93,7 +87,7 @@ export function RenameBoardModal({
           <Button
             onClick={handleSave}
             disabled={!name.trim()}
-            className="flex-1 h-14 rounded-2xl text-base font-medium bg-gradient-to-r from-gray-900 to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 h-14 rounded-2xl text-base font-medium bg-linear-to-r from-gray-900 to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save Changes
           </Button>

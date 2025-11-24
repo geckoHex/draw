@@ -97,7 +97,7 @@ export function DropdownMenuItem({
           : "text-gray-700 hover:bg-gray-50"
       )}
     >
-      {icon && <span className="flex-shrink-0">{icon}</span>}
+      {icon && <span className="shrink-0">{icon}</span>}
       {children}
     </button>
   )

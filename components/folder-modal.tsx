@@ -139,7 +139,7 @@ export function FolderModal({
           <Button
             onClick={handleSave}
             disabled={!name.trim()}
-            className="flex-1 h-14 rounded-2xl text-base font-medium bg-gradient-to-r from-gray-900 to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 h-14 rounded-2xl text-base font-medium bg-linear-to-r from-gray-900 to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {initialName ? "Save Changes" : "Create Folder"}
           </Button>

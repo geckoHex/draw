@@ -67,6 +67,20 @@ export default function Home() {
     }
   }, [offset, isLoading, hasMore]);
 
+  const timeAgo = useCallback((timestamp: number) => {
+    const seconds = Math.floor((now - timestamp) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+    return `${Math.floor(months / 12)} year${Math.floor(months / 12) === 1 ? '' : 's'} ago`;
+  }, [now]);
+
   // Filter boards and folders based on search query
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -104,7 +118,7 @@ export default function Home() {
     
     setFilteredBoards(filteredBoardsList);
     setFilteredFolders(filteredFoldersList);
-  }, [searchQuery, boards, folders, now]);
+  }, [searchQuery, boards, folders, now, timeAgo]);
 
   const loadFolders = useCallback(async () => {
     try {
@@ -130,7 +144,7 @@ export default function Home() {
     }, 60000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [loadMoreBoards, loadFolders]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -294,24 +308,10 @@ export default function Home() {
     return boards.filter(board => board.folderId === folderId).length;
   };
 
-  const timeAgo = (timestamp: number) => {
-    const seconds = Math.floor((now - timestamp) / 1000);
-    if (seconds < 60) return 'Just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
-    const months = Math.floor(days / 30);
-    if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
-    return `${Math.floor(months / 12)} year${Math.floor(months / 12) === 1 ? '' : 's'} ago`;
-  };
-
   // Show nothing while initial data is loading
   if (initialLoading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
+      <main className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
         {/* Static background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
@@ -325,7 +325,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
+    <main className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
       {/* Static background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
@@ -337,7 +337,7 @@ export default function Home() {
         <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent tracking-tight">
+              <h1 className="text-4xl sm:text-5xl font-bold bg-linear-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent tracking-tight">
                 {selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : 'My Boards'}
               </h1>
               <p className="text-sm text-gray-600">
@@ -369,7 +369,7 @@ export default function Home() {
               <Button
                 onClick={createNewBoard}
                 size="lg"
-                className="rounded-2xl px-8 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20 transition-all hover:scale-105 bg-gradient-to-r from-gray-900 to-gray-800"
+                className="rounded-2xl px-8 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20 transition-all hover:scale-105 bg-linear-to-r from-gray-900 to-gray-800"
               >
                 <Plus className="mr-2 h-5 w-5" />
                 New Board
@@ -557,10 +557,10 @@ export default function Home() {
           /* Empty State */
           <div className="flex flex-col items-center justify-center py-24 px-4">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-3xl rounded-full" />
+              <div className="absolute inset-0 bg-linear-to-r from-blue-500/20 to-purple-500/20 blur-3xl rounded-full" />
               <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-12 shadow-2xl shadow-black/10 border border-gray-200/50">
                 <div className="flex flex-col items-center gap-6 text-center max-w-md">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
                     <Plus className="w-10 h-10 text-gray-400" />
                   </div>
                   <div className="space-y-2">
@@ -572,7 +572,7 @@ export default function Home() {
                   <Button
                     onClick={createNewBoard}
                     size="lg"
-                    className="rounded-2xl px-8 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20 transition-all hover:scale-105 bg-gradient-to-r from-gray-900 to-gray-800"
+                    className="rounded-2xl px-8 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20 transition-all hover:scale-105 bg-linear-to-r from-gray-900 to-gray-800"
                   >
                     <Plus className="mr-2 h-5 w-5" />
                     Create Your First Board
