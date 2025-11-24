@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/db'
 import { useRouter } from 'next/navigation'
+import { generateBoardName } from '@/lib/name-generator'
 
 type Tool = 'pen' | 'eraser'
 
@@ -41,9 +42,11 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           setStrokes(board.strokes)
         } else {
           // New board, save initial state
+          const newTitle = generateBoardName()
+          setTitle(newTitle)
           await saveBoard({
             id: boardId,
-            title: 'Untitled Board',
+            title: newTitle,
             createdAt: Date.now(),
             updatedAt: Date.now(),
             strokes: []
