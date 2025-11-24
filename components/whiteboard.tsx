@@ -257,6 +257,23 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
   return (
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
+      {/* Canvas Area */}
+      <div className="flex-1 p-8 flex items-center justify-center">
+        <div ref={containerRef} className="w-full h-full bg-white rounded-2xl shadow-lg relative overflow-hidden" style={cursorStyle}>
+          <canvas
+            ref={canvasRef}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className="absolute top-0 left-0 touch-none"
+          />
+        </div>
+      </div>
+
       {/* Sidebar */}
       <Card className="m-4 w-64 shrink-0 flex flex-col gap-4 p-4 h-[calc(100vh-2rem)] bg-white shadow-lg z-10">
         <div className="space-y-4">
@@ -359,21 +376,6 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
             )}
         </div>
       </Card>
-
-      {/* Canvas Area */}
-      <div ref={containerRef} className="flex-1 relative h-full" style={cursorStyle}>
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-          className="absolute top-0 left-0 touch-none"
-        />
-      </div>
     </div>
   )
 }
