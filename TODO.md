@@ -19,6 +19,7 @@
 
 * [ ] Improve favicon
 * [ ] Pick a better product name
+* [ ] UI Style improvements (+ dark mode)
 
 ### **User Experience**
 
