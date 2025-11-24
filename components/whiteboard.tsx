@@ -7,8 +7,7 @@ import { Slider } from '@/components/ui/slider'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
-import { saveBoard, getBoard, type Stroke, type Point, type Board } from '@/lib/db'
+import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/db'
 import { useRouter } from 'next/navigation'
 
 type Tool = 'pen' | 'eraser'
@@ -23,7 +22,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
-  const [color, setColor] = useState('#000000')
+  const [color] = useState('#000000')
   const [title, setTitle] = useState('Untitled Board')
   
   const [strokes, setStrokes] = useState<Stroke[]>([])
@@ -239,7 +238,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   return (
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
       {/* Sidebar */}
-      <Card className="m-4 w-64 flex-shrink-0 flex flex-col gap-6 p-4 h-[calc(100vh-2rem)] bg-white shadow-lg z-10">
+      <Card className="m-4 w-64 shrink-0 flex flex-col gap-6 p-4 h-[calc(100vh-2rem)] bg-white shadow-lg z-10">
         <div className="space-y-4">
             <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
