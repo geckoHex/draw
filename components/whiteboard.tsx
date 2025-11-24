@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Eraser, Pen, Trash2, Download, Undo, Redo, ChevronLeft } from 'lucide-react'
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import { Eraser, Pen, Trash2, Download, Undo, Redo, ChevronLeft, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Card } from '@/components/ui/card'
@@ -25,6 +25,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [brushSize, setBrushSize] = useState([5])
   const [color] = useState('#000000')
   const [title, setTitle] = useState('Untitled Board')
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle')
   
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [redoStack, setRedoStack] = useState<Stroke[]>([])
@@ -62,6 +63,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   // Save board data (debounced or on change)
   useEffect(() => {
     const save = async () => {
+      setSaveStatus('saving')
       try {
         const board = await getBoard(boardId)
         await saveBoard({
@@ -71,8 +73,10 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           updatedAt: Date.now(),
           strokes
         })
+        setTimeout(() => setSaveStatus('saved'), 1000)
       } catch (error) {
         console.error("Failed to save board:", error)
+        setSaveStatus('idle')
       }
     }
     
@@ -238,14 +242,28 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     link.click()
   }
 
+  const cursorStyle = useMemo(() => {
+    const size = brushSize[0];
+    const half = size / 2;
+    const svg = `
+      <svg width="${size + 2}" height="${size + 2}" viewBox="0 0 ${size + 2} ${size + 2}" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${half + 1}" cy="${half + 1}" r="${half}" fill="none" stroke="black" stroke-width="1" />
+        <circle cx="${half + 1}" cy="${half + 1}" r="${half - 1}" fill="none" stroke="white" stroke-width="1" />
+      </svg>
+    `;
+    const encoded = typeof window !== 'undefined' ? window.btoa(svg) : '';
+    return { cursor: `url("data:image/svg+xml;base64,${encoded}") ${half + 1} ${half + 1}, auto` };
+  }, [brushSize]);
+
   return (
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
       {/* Sidebar */}
-      <Card className="m-4 w-64 shrink-0 flex flex-col gap-6 p-4 h-[calc(100vh-2rem)] bg-white shadow-lg z-10">
+      <Card className="m-4 w-64 shrink-0 flex flex-col gap-4 p-4 h-[calc(100vh-2rem)] bg-white shadow-lg z-10">
         <div className="space-y-4">
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
-                    <ChevronLeft className="h-4 w-4" />
+            <div className="flex flex-col gap-2">
+                <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="self-start -ml-2 text-muted-foreground">
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Back to Home
                 </Button>
                 <Input
                     value={title}
@@ -258,28 +276,28 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         <Separator />
 
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold tracking-tight">Tools</h2>
-          <div className="flex gap-2">
-            <Button
-              variant={tool === 'pen' ? 'default' : 'outline'}
-              size="icon"
-              onClick={() => setTool('pen')}
-              title="Pen"
-            >
-              <Pen className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={tool === 'eraser' ? 'default' : 'outline'}
-              size="icon"
-              onClick={() => setTool('eraser')}
-              title="Eraser"
-            >
-              <Eraser className="h-4 w-4" />
-            </Button>
+          <h2 className="text-sm font-medium">Tools</h2>
+          <div className="flex bg-muted p-1 rounded-lg">
+            <div className="grid grid-cols-2 w-full gap-1">
+                <Button
+                    variant={tool === 'pen' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setTool('pen')}
+                    className={tool === 'pen' ? 'bg-white shadow-sm' : 'hover:bg-transparent'}
+                >
+                    <Pen className="h-4 w-4 mr-2" /> Pen
+                </Button>
+                <Button
+                    variant={tool === 'eraser' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setTool('eraser')}
+                    className={tool === 'eraser' ? 'bg-white shadow-sm' : 'hover:bg-transparent'}
+                >
+                    <Eraser className="h-4 w-4 mr-2" /> Eraser
+                </Button>
+            </div>
           </div>
         </div>
-
-        <Separator />
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
@@ -300,12 +318,12 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
             <h2 className="text-sm font-medium">History</h2>
-            <div className="flex gap-2">
-                <Button variant="outline" size="icon" onClick={undo} disabled={strokes.length === 0}>
-                    <Undo className="h-4 w-4" />
+            <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={undo} disabled={strokes.length === 0}>
+                    <Undo className="h-4 w-4 mr-2" /> Undo
                 </Button>
-                <Button variant="outline" size="icon" onClick={redo} disabled={redoStack.length === 0}>
-                    <Redo className="h-4 w-4" />
+                <Button variant="outline" onClick={redo} disabled={redoStack.length === 0}>
+                    <Redo className="h-4 w-4 mr-2" /> Redo
                 </Button>
             </div>
         </div>
@@ -314,25 +332,36 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Actions</h2>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={clearCanvas} className="w-full justify-start">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Clear
-            </Button>
-            <Button variant="outline" onClick={downloadCanvas} className="w-full justify-start">
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={downloadCanvas} className="w-full justify-center">
               <Download className="mr-2 h-4 w-4" />
-              Save Img
+              Save Image
+            </Button>
+            <Button variant="outline" onClick={clearCanvas} className="w-full justify-center">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Clear Board
             </Button>
           </div>
         </div>
         
-        <div className="mt-auto text-xs text-muted-foreground text-center">
-          Auto-saving...
+        <div className="mt-auto flex items-center justify-center text-xs text-muted-foreground h-6">
+            {saveStatus === 'saving' && (
+                <>
+                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    Saving...
+                </>
+            )}
+            {saveStatus === 'saved' && (
+                <>
+                    <Check className="h-3 w-3 mr-2" />
+                    Saved
+                </>
+            )}
         </div>
       </Card>
 
       {/* Canvas Area */}
-      <div ref={containerRef} className="flex-1 relative h-full cursor-crosshair">
+      <div ref={containerRef} className="flex-1 relative h-full" style={cursorStyle}>
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
