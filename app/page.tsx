@@ -33,6 +33,7 @@ export default function Home() {
   const [boardToDelete, setBoardToDelete] = useState<{ id: string; title: string } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const [draggedBoardId, setDraggedBoardId] = useState<string | null>(null);
@@ -109,8 +110,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    loadMoreBoards();
-    loadFolders();
+    const loadInitialData = async () => {
+      setInitialLoading(true);
+      await Promise.all([loadMoreBoards(), loadFolders()]);
+      setInitialLoading(false);
+    };
+    
+    loadInitialData();
     
     // Update relative time every minute
     const interval = setInterval(() => {
@@ -270,6 +276,22 @@ export default function Home() {
     if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
     return `${Math.floor(months / 12)} year${Math.floor(months / 12) === 1 ? '' : 's'} ago`;
   };
+
+  // Show nothing while initial data is loading
+  if (initialLoading) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
+        {/* Static background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl" />
+        </div>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
@@ -468,7 +490,7 @@ export default function Home() {
         {!searchQuery && <div ref={observerTarget} className="h-4" />}
 
         {/* Empty State */}
-        {boards.length === 0 && !isLoading && (
+        {boards.length === 0 && (
           /* Empty State */
           <div className="flex flex-col items-center justify-center py-24 px-4">
             <div className="relative">
