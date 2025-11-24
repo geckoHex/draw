@@ -189,9 +189,18 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
     setCurrentStroke(prev => {
       if (!prev) return null
+      
+      // Apply 10% smoothing by interpolating with the last point
+      const lastPoint = prev.points[prev.points.length - 1]
+      const smoothingFactor = 0.15
+      const smoothedPoint = {
+        x: lastPoint.x + (coords.x - lastPoint.x) * (1 - smoothingFactor),
+        y: lastPoint.y + (coords.y - lastPoint.y) * (1 - smoothingFactor)
+      }
+      
       return {
         ...prev,
-        points: [...prev.points, coords]
+        points: [...prev.points, smoothedPoint]
       }
     })
   }
