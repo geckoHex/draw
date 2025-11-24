@@ -24,6 +24,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
+  const [penSize, setPenSize] = useState(5)
+  const [eraserSize, setEraserSize] = useState(20)
   const [color, setColor] = useState('#000000')
   const [title, setTitle] = useState('Untitled Board')
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle')
@@ -64,7 +66,6 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   // Save board data (debounced or on change)
   useEffect(() => {
     const save = async () => {
-      setSaveStatus('saving')
       try {
         const board = await getBoard(boardId)
         await saveBoard({
@@ -74,7 +75,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           updatedAt: Date.now(),
           strokes
         })
-        setTimeout(() => setSaveStatus('saved'), 1000)
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('idle'), 2000)
       } catch (error) {
         console.error("Failed to save board:", error)
         setSaveStatus('idle')
@@ -213,6 +215,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     setStrokes(prev => [...prev, currentStroke])
     setCurrentStroke(null)
     setRedoStack([]) // Clear redo stack on new action
+    setSaveStatus('saving') // Immediately show saving status
   }
 
   const undo = () => {
@@ -268,8 +271,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   return (
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
       {/* Canvas Area */}
-      <div className="flex-1 p-8 flex items-center justify-center">
-        <div ref={containerRef} className="w-full h-full bg-white rounded-2xl shadow-lg relative overflow-hidden" style={cursorStyle}>
+      <div className="flex-1 p-4 flex items-center justify-center">
+        <div ref={containerRef} className="w-full h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-lg relative overflow-hidden" style={cursorStyle}>
           <canvas
             ref={canvasRef}
             onMouseDown={startDrawing}
@@ -285,7 +288,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       </div>
 
       {/* Sidebar */}
-      <Card className="m-4 w-64 shrink-0 flex flex-col gap-4 p-4 h-[calc(100vh-2rem)] bg-transparent border-0 shadow-none rounded-none z-10">
+      <Card className="m-4 w-64 shrink-0 flex flex-col gap-4 p-4 h-[calc(100vh-2rem)] bg-background/80 backdrop-blur-sm border border-border shadow-lg rounded-2xl z-10">
         <div className="space-y-4">
             <div className="flex flex-col gap-2">
                 <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="self-start -ml-2 text-muted-foreground shadow-none bg-transparent">
@@ -295,6 +298,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
                 <Input
                   value={title}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+                  onFocus={(e: React.FocusEvent<HTMLInputElement>) => e.target.select()}
                   className="h-8 font-semibold bg-transparent border-0 shadow-none"
                 />
             </div>
@@ -304,21 +308,36 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Tools</h2>
-          <div className="flex p-1 rounded-none bg-transparent">
-            <div className="grid grid-cols-2 w-full gap-1">
+          <div className="relative flex p-1 rounded-lg bg-muted/50">
+            {/* Animated slider background */}
+            <div
+              className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] bg-background rounded-md shadow-sm transition-transform duration-300 ease-out"
+              style={{
+                transform: tool === 'pen' ? 'translateX(0.25rem)' : 'translateX(calc(100% + 0.25rem))'
+              }}
+            />
+            <div className="grid grid-cols-2 w-full gap-1 relative z-10">
                 <Button
-                  variant={tool === 'pen' ? 'secondary' : 'ghost'}
+                  variant="ghost"
                   size="sm"
-                  onClick={() => setTool('pen')}
-                  className={tool === 'pen' ? 'bg-transparent shadow-none' : 'hover:bg-transparent'}
+                  onClick={() => {
+                    setPenSize(brushSize[0])
+                    setTool('pen')
+                    setBrushSize([penSize])
+                  }}
+                  className={`shadow-none transition-colors ${tool === 'pen' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                     <Pen className="h-4 w-4 mr-2" /> Pen
                 </Button>
                 <Button
-                  variant={tool === 'eraser' ? 'secondary' : 'ghost'}
+                  variant="ghost"
                   size="sm"
-                  onClick={() => setTool('eraser')}
-                  className={tool === 'eraser' ? 'bg-transparent shadow-none' : 'hover:bg-transparent'}
+                  onClick={() => {
+                    setEraserSize(brushSize[0])
+                    setTool('eraser')
+                    setBrushSize([eraserSize])
+                  }}
+                  className={`shadow-none transition-colors ${tool === 'eraser' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                     <Eraser className="h-4 w-4 mr-2" /> Eraser
                 </Button>
@@ -328,7 +347,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Color</h2>
-          <ColorPicker value={color} onChange={setColor} triggerClassName="shadow-none bg-transparent" />
+          <ColorPicker value={color} onChange={setColor} triggerClassName="shadow-none bg-transparent w-full" />
         </div>
 
         <div className="space-y-4">
@@ -338,12 +357,19 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           </div>
           <Slider
             value={brushSize}
-            onValueChange={setBrushSize}
+            onValueChange={(value) => {
+              setBrushSize(value)
+              if (tool === 'pen') {
+                setPenSize(value[0])
+              } else {
+                setEraserSize(value[0])
+              }
+            }}
             max={50}
             min={1}
             step={1}
             className="w-full"
-            thumbClassName="bg-transparent shadow-none"
+            thumbClassName="bg-white border-2 border-foreground shadow-md"
           />
         </div>
 
@@ -377,19 +403,23 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           </div>
         </div>
         
-        <div className="mt-auto flex items-center justify-center text-xs text-muted-foreground h-6">
-            {saveStatus === 'saving' && (
-                <>
-                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                    Saving...
-                </>
-            )}
-            {saveStatus === 'saved' && (
-                <>
-                    <Check className="h-3 w-3 mr-2" />
-                    Saved
-                </>
-            )}
+        <div className="mt-auto flex items-center justify-center text-xs text-muted-foreground h-6 relative overflow-hidden">
+            <div
+              className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
+                saveStatus === 'saving' ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+              }`}
+            >
+                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                <span>Saving...</span>
+            </div>
+            <div
+              className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
+                saveStatus === 'saved' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+              }`}
+            >
+                <Check className="h-3 w-3 mr-2" />
+                <span>Saved</span>
+            </div>
         </div>
       </Card>
     </div>

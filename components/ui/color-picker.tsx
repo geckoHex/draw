@@ -56,13 +56,13 @@ export function ColorPicker({ value, onChange, triggerClassName }: ColorPickerPr
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64" align="start">
-        <div className="grid grid-cols-6 gap-2">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)]" align="center">
+        <div className="grid grid-cols-6 gap-3">
           {PRESET_COLORS.map((color) => (
             <button
               key={color}
               className={cn(
-                "h-8 w-8 rounded border-2 transition-all hover:scale-110",
+                "h-6 w-6 rounded border-2 transition-all hover:scale-110",
                 value === color ? "border-primary ring-2 ring-primary ring-offset-2" : "border-transparent"
               )}
               style={{ backgroundColor: color }}
