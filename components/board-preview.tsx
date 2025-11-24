@@ -114,7 +114,7 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
   }, [strokes, dimensions])
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-white rounded-md overflow-hidden border">
+    <div ref={containerRef} className="w-full h-full bg-white">
       <canvas ref={canvasRef} />
     </div>
   )
