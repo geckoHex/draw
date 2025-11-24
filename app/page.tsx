@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Clock, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAllBoards, deleteBoard, type Board } from "@/lib/db";
 import { BoardPreview } from "@/components/board-preview";
 
@@ -68,7 +67,7 @@ export default function Home() {
           {boards.map((board) => (
             <div
               key={board.id}
-              className="group relative flex flex-col p-5 h-80 w-full border-2 border-black rounded-[32px] bg-white hover:shadow-xl transition-all cursor-pointer"
+              className="group relative flex flex-col p-5 h-80 w-full border-2 border-black rounded-4xl bg-white hover:shadow-xl transition-all cursor-pointer"
               onClick={() => router.push(`/board/${board.id}`)}
             >
               <div className="flex justify-between items-start mb-4 px-1">
@@ -90,7 +89,7 @@ export default function Home() {
                 </Button>
               </div>
               
-              <div className="flex-1 relative border border-black rounded-[24px] overflow-hidden bg-white">
+              <div className="flex-1 relative border border-black rounded-3xl overflow-hidden bg-white">
                 <BoardPreview strokes={board.strokes} />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
               </div>
