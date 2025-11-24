@@ -2,13 +2,17 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Loader2, Search, X, FolderPlus } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { RenameBoardModal } from "@/components/rename-board-modal";
+import { FolderPickerModal } from "@/components/folder-picker-modal";
 import {
   getBoardsPaginated,
   deleteBoard,
+  renameBoard,
   getAllFolders,
   saveFolder,
   deleteFolder,
@@ -31,6 +35,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [boardToDelete, setBoardToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [boardToRename, setBoardToRename] = useState<{ id: string; title: string } | null>(null);
+  const [boardToMove, setBoardToMove] = useState<{ id: string; folderId: string | null } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -153,9 +159,34 @@ export default function Home() {
     router.push(`/board/${id}`);
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, id: string, title: string) => {
-    e.stopPropagation();
-    setBoardToDelete({ id, title });
+  const handleRenameBoard = async (newTitle: string) => {
+    if (boardToRename) {
+      await renameBoard(boardToRename.id, newTitle);
+      setBoards(prev => prev.map(board =>
+        board.id === boardToRename.id
+          ? { ...board, title: newTitle, updatedAt: Date.now() }
+          : board
+      ));
+      setBoardToRename(null);
+    }
+  };
+
+  const handleMoveBoard = async (folderId: string | null) => {
+    if (boardToMove) {
+      await moveBoardToFolder(boardToMove.id, folderId);
+      // If we're in a folder view, remove the board from the list
+      if (selectedFolderId) {
+        setBoards(prev => prev.filter(board => board.id !== boardToMove.id));
+      } else {
+        // Update the board's folderId in the list
+        setBoards(prev => prev.map(board =>
+          board.id === boardToMove.id
+            ? { ...board, folderId, updatedAt: Date.now() }
+            : board
+        ));
+      }
+      setBoardToMove(null);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -440,14 +471,46 @@ export default function Home() {
                           </span>
                         )}
                       </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                    onClick={(e) => handleDeleteClick(e, board.id, board.title)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                      <DropdownMenu
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        }
+                      >
+                        <DropdownMenuItem
+                          icon={<Edit2 className="h-4 w-4" />}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setBoardToRename({ id: board.id, title: board.title })
+                          }}
+                        >
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          icon={<FolderInput className="h-4 w-4" />}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setBoardToMove({ id: board.id, folderId: board.folderId })
+                          }}
+                        >
+                          Move to Folder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setBoardToDelete({ id: board.id, title: board.title })
+                          }}
+                        >
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenu>
                 </div>
                 
                 {/* Preview Container */}
@@ -558,6 +621,21 @@ export default function Home() {
         initialName={editingFolder?.name}
         initialColor={editingFolder?.color}
         title="Edit Folder"
+      />
+
+      <RenameBoardModal
+        isOpen={boardToRename !== null}
+        onClose={() => setBoardToRename(null)}
+        onSave={handleRenameBoard}
+        initialName={boardToRename?.title || ""}
+      />
+
+      <FolderPickerModal
+        isOpen={boardToMove !== null}
+        onClose={() => setBoardToMove(null)}
+        onSelect={handleMoveBoard}
+        folders={folders}
+        currentFolderId={boardToMove?.folderId || null}
       />
     </main>
   );

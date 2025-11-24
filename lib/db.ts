@@ -159,6 +159,16 @@ export const deleteBoard = async (id: string): Promise<void> => {
     });
 }
 
+export const renameBoard = async (boardId: string, newTitle: string): Promise<void> => {
+    const db = await initDB();
+    const board = await getBoard(boardId);
+    if (!board) throw new Error('Board not found');
+    
+    board.title = newTitle;
+    board.updatedAt = Date.now();
+    await saveBoard(board);
+}
+
 export const moveBoardToFolder = async (boardId: string, folderId: string | null): Promise<void> => {
     const db = await initDB();
     const board = await getBoard(boardId);
