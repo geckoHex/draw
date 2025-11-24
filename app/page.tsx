@@ -47,6 +47,7 @@ export default function Home() {
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
+  const initialized = useRef(false);
   const router = useRouter();
 
   const loadMoreBoards = useCallback(async () => {
@@ -130,21 +131,39 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     const loadInitialData = async () => {
       setInitialLoading(true);
-      await Promise.all([loadMoreBoards(), loadFolders()]);
-      setInitialLoading(false);
+      try {
+        const [newBoards, loadedFolders] = await Promise.all([
+          getBoardsPaginated(BOARDS_PER_PAGE, 0),
+          getAllFolders()
+        ]);
+        
+        setBoards(newBoards);
+        setFolders(loadedFolders);
+        setOffset(newBoards.length);
+        setHasMore(newBoards.length >= BOARDS_PER_PAGE);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setInitialLoading(false);
+      }
     };
     
     loadInitialData();
-    
+  }, []);
+
+  useEffect(() => {
     // Update relative time every minute
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 60000);
     
     return () => clearInterval(interval);
-  }, [loadMoreBoards, loadFolders]);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
