@@ -1,68 +1,143 @@
 "use client"
 
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Eraser, Pen, Trash2, Download, Undo, Redo } from 'lucide-react'
+import { Eraser, Pen, Trash2, Download, Undo, Redo, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { saveBoard, getBoard, type Stroke, type Point, type Board } from '@/lib/db'
+import { useRouter } from 'next/navigation'
 
 type Tool = 'pen' | 'eraser'
 
-interface Point {
-  x: number
-  y: number
+interface WhiteboardProps {
+  boardId: string
 }
 
-export function Whiteboard() {
+export function Whiteboard({ boardId }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
   const [color, setColor] = useState('#000000')
+  const [title, setTitle] = useState('Untitled Board')
   
-  // History for undo/redo could be added here, but keeping it simple for now
+  const [strokes, setStrokes] = useState<Stroke[]>([])
+  const [redoStack, setRedoStack] = useState<Stroke[]>([])
+  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   
-  const initializeCanvas = useCallback(() => {
+  const router = useRouter()
+
+  // Load board data
+  useEffect(() => {
+    const loadBoard = async () => {
+      try {
+        const board = await getBoard(boardId)
+        if (board) {
+          setTitle(board.title)
+          setStrokes(board.strokes)
+        } else {
+          // New board, save initial state
+          await saveBoard({
+            id: boardId,
+            title: 'Untitled Board',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            strokes: []
+          })
+        }
+      } catch (error) {
+        console.error("Failed to load board:", error)
+      }
+    }
+    loadBoard()
+  }, [boardId])
+
+  // Save board data (debounced or on change)
+  useEffect(() => {
+    const save = async () => {
+      try {
+        const board = await getBoard(boardId)
+        await saveBoard({
+          id: boardId,
+          title,
+          createdAt: board?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+          strokes
+        })
+      } catch (error) {
+        console.error("Failed to save board:", error)
+      }
+    }
+    
+    const timeoutId = setTimeout(save, 1000) // Auto-save after 1s of inactivity
+    return () => clearTimeout(timeoutId)
+  }, [boardId, title, strokes])
+
+  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+    if (stroke.points.length < 1) return
+
+    ctx.beginPath()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = stroke.tool === 'eraser' ? '#ffffff' : stroke.color
+    ctx.lineWidth = stroke.size
+
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
+    }
+    ctx.stroke()
+  }
+
+  const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current
     const container = containerRef.current
     if (!canvas || !container) return
 
-    // Handle high DPI displays
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Handle high DPI
     const dpr = window.devicePixelRatio || 1
     const rect = container.getBoundingClientRect()
     
-    canvas.width = rect.width * dpr
-    canvas.height = rect.height * dpr
-    
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.scale(dpr, dpr)
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      // Set initial white background
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, rect.width, rect.height)
+    // Only resize if dimensions changed to avoid flickering/clearing
+    if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+        canvas.width = rect.width * dpr
+        canvas.height = rect.height * dpr
+        canvas.style.width = `${rect.width}px`
+        canvas.style.height = `${rect.height}px`
+        ctx.scale(dpr, dpr)
     }
-    
-    canvas.style.width = `${rect.width}px`
-    canvas.style.height = `${rect.height}px`
-  }, [])
+
+    // Clear and fill white
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, rect.width, rect.height)
+
+    // Draw all saved strokes
+    strokes.forEach(stroke => drawStroke(ctx, stroke))
+
+    // Draw current stroke
+    if (currentStroke) {
+      drawStroke(ctx, currentStroke)
+    }
+  }, [strokes, currentStroke])
 
   useEffect(() => {
-    initializeCanvas()
-    
-    const handleResize = () => {
-      // Debounce or handle resize carefully to preserve content if needed
-      // For this simple version, we might just re-init or let it be
-      // initializeCanvas() // This would clear the canvas, so maybe skip for now
-    }
+    renderCanvas()
+  }, [renderCanvas])
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => renderCanvas()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [initializeCanvas])
+  }, [renderCanvas])
 
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent): Point | null => {
     const canvas = canvasRef.current
@@ -86,52 +161,69 @@ export function Whiteboard() {
   }
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault() // Prevent scrolling on touch
+    e.preventDefault()
     const coords = getCoordinates(e)
     if (!coords) return
 
     setIsDrawing(true)
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext('2d')
-    if (!ctx) return
-
-    ctx.beginPath()
-    ctx.moveTo(coords.x, coords.y)
-    ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color
-    ctx.lineWidth = brushSize[0]
+    setCurrentStroke({
+      points: [coords],
+      color: color,
+      size: brushSize[0],
+      tool: tool
+    })
   }
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
-    if (!isDrawing) return
+    if (!isDrawing || !currentStroke) return
 
     const coords = getCoordinates(e)
     if (!coords) return
 
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext('2d')
-    if (!ctx) return
-
-    ctx.lineTo(coords.x, coords.y)
-    ctx.stroke()
+    setCurrentStroke(prev => {
+      if (!prev) return null
+      return {
+        ...prev,
+        points: [...prev.points, coords]
+      }
+    })
   }
 
   const stopDrawing = () => {
+    if (!isDrawing || !currentStroke) return
+    
     setIsDrawing(false)
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext('2d')
-    if (ctx) {
-      ctx.closePath()
+    setStrokes(prev => [...prev, currentStroke])
+    setCurrentStroke(null)
+    setRedoStack([]) // Clear redo stack on new action
+  }
+
+  const undo = () => {
+    if (strokes.length === 0) return
+    const newStrokes = [...strokes]
+    const poppedStroke = newStrokes.pop()
+    if (poppedStroke) {
+      setStrokes(newStrokes)
+      setRedoStack(prev => [...prev, poppedStroke])
+    }
+  }
+
+  const redo = () => {
+    if (redoStack.length === 0) return
+    const newRedoStack = [...redoStack]
+    const poppedStroke = newRedoStack.pop()
+    if (poppedStroke) {
+      setRedoStack(newRedoStack)
+      setStrokes(prev => [...prev, poppedStroke])
     }
   }
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx) return
-
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio)
+    if (window.confirm('Are you sure you want to clear the whiteboard?')) {
+        setStrokes([])
+        setRedoStack([])
+    }
   }
 
   const downloadCanvas = () => {
@@ -139,7 +231,7 @@ export function Whiteboard() {
     if (!canvas) return
 
     const link = document.createElement('a')
-    link.download = 'whiteboard.png'
+    link.download = `${title.replace(/\s+/g, '_').toLowerCase()}.png`
     link.href = canvas.toDataURL()
     link.click()
   }
@@ -148,6 +240,21 @@ export function Whiteboard() {
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
       {/* Sidebar */}
       <Card className="m-4 w-64 flex-shrink-0 flex flex-col gap-6 p-4 h-[calc(100vh-2rem)] bg-white shadow-lg z-10">
+        <div className="space-y-4">
+            <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Input
+                    value={title}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+                    className="h-8 font-semibold"
+                />
+            </div>
+        </div>
+
+        <Separator />
+
         <div className="space-y-2">
           <h2 className="text-lg font-semibold tracking-tight">Tools</h2>
           <div className="flex gap-2">
@@ -190,6 +297,20 @@ export function Whiteboard() {
         <Separator />
 
         <div className="space-y-2">
+            <h2 className="text-sm font-medium">History</h2>
+            <div className="flex gap-2">
+                <Button variant="outline" size="icon" onClick={undo} disabled={strokes.length === 0}>
+                    <Undo className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={redo} disabled={redoStack.length === 0}>
+                    <Redo className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
           <h2 className="text-sm font-medium">Actions</h2>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={clearCanvas} className="w-full justify-start">
@@ -198,13 +319,13 @@ export function Whiteboard() {
             </Button>
             <Button variant="outline" onClick={downloadCanvas} className="w-full justify-start">
               <Download className="mr-2 h-4 w-4" />
-              Save
+              Save Img
             </Button>
           </div>
         </div>
         
         <div className="mt-auto text-xs text-muted-foreground text-center">
-          Simple Whiteboard
+          Auto-saving...
         </div>
       </Card>
 
