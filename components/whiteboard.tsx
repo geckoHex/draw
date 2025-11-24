@@ -56,7 +56,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
             title: newTitle,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            strokes: []
+            strokes: [],
+            folderId: null
           })
         }
       } catch (error) {
@@ -76,7 +77,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           title,
           createdAt: board?.createdAt || Date.now(),
           updatedAt: Date.now(),
-          strokes
+          strokes,
+          folderId: board?.folderId || null
         })
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus('idle'), 2000)
