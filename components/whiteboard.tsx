@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
+import { ColorPicker } from '@/components/ui/color-picker'
 import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/db'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
@@ -23,7 +24,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
-  const [color] = useState('#000000')
+  const [color, setColor] = useState('#000000')
   const [title, setTitle] = useState('Untitled Board')
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle')
   
@@ -323,6 +324,11 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
                 </Button>
             </div>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium">Color</h2>
+          <ColorPicker value={color} onChange={setColor} />
         </div>
 
         <div className="space-y-4">
