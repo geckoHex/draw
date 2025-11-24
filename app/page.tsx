@@ -6,6 +6,7 @@ import { Plus, Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAllBoards, deleteBoard, type Board } from "@/lib/db";
+import { BoardPreview } from "@/components/board-preview";
 
 export default function Home() {
   const [boards, setBoards] = useState<Board[]>([]);
@@ -72,8 +73,8 @@ export default function Home() {
                 <CardTitle className="truncate">{board.title || "Untitled Board"}</CardTitle>
               </CardHeader>
               <CardContent className="flex-1">
-                <div className="w-full h-32 bg-gray-100 rounded-md flex items-center justify-center text-muted-foreground text-sm">
-                  Preview
+                <div className="w-full h-32 bg-gray-100 rounded-md overflow-hidden">
+                  <BoardPreview strokes={board.strokes} />
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between items-center text-sm text-muted-foreground border-t pt-4">
