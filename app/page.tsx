@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { getAllBoards, deleteBoard, type Board } from "@/lib/db";
 import { BoardPreview } from "@/components/board-preview";
 
 export default function Home() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [now, setNow] = useState(() => Date.now());
+  const [boardToDelete, setBoardToDelete] = useState<{ id: string; title: string } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -28,12 +30,17 @@ export default function Home() {
     router.push(`/board/${id}`);
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this board?")) {
-      await deleteBoard(id);
+    setBoardToDelete({ id, title });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (boardToDelete) {
+      await deleteBoard(boardToDelete.id);
       const loadedBoards = await getAllBoards();
       setBoards(loadedBoards);
+      setBoardToDelete(null);
     }
   };
 
@@ -83,7 +90,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 -mr-2 -mt-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => handleDelete(e, board.id)}
+                  onClick={(e) => handleDeleteClick(e, board.id, board.title)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -103,6 +110,18 @@ export default function Home() {
             </div>
         )}
       </div>
+
+      {/* Delete Board Confirmation Modal */}
+      <ConfirmModal
+        isOpen={boardToDelete !== null}
+        onClose={() => setBoardToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Board?"
+        description={`Are you sure you want to delete "${boardToDelete?.title || 'this board'}"? This action cannot be undone and all drawings will be permanently lost.`}
+        confirmText="Delete Board"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </main>
   );
 }

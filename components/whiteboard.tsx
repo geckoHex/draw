@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { ColorPicker } from '@/components/ui/color-picker'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/db'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
@@ -33,6 +34,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [redoStack, setRedoStack] = useState<Stroke[]>([])
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
+  
+  const [showClearModal, setShowClearModal] = useState(false)
   
   const router = useRouter()
 
@@ -239,10 +242,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   }
 
   const clearCanvas = () => {
-    if (window.confirm('Are you sure you want to clear the whiteboard?')) {
-        setStrokes([])
-        setRedoStack([])
-    }
+    setStrokes([])
+    setRedoStack([])
   }
 
   const downloadCanvas = () => {
@@ -396,7 +397,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
               <Download className="mr-2 h-4 w-4" />
               Save Image
             </Button>
-            <Button variant="outline" onClick={clearCanvas} className="w-full justify-center shadow-none bg-transparent">
+            <Button variant="outline" onClick={() => setShowClearModal(true)} className="w-full justify-center shadow-none bg-transparent">
               <Trash2 className="mr-2 h-4 w-4" />
               Clear Board
             </Button>
@@ -422,6 +423,18 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
             </div>
         </div>
       </Card>
+
+      {/* Clear Board Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        onConfirm={clearCanvas}
+        title="Clear Board?"
+        description="This will permanently delete all drawings on this board. This action cannot be undone."
+        confirmText="Clear Board"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   )
 }
