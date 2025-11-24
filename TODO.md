@@ -1,13 +1,33 @@
-# TO-DO List
+# **📌 Project To-Do**
 
-## Bugs
-- [ ] New folder, rename board, and move to folder UI inconsistency
+## **🐛 Bugs**
 
-## Features
-- [ ] App router for folders
-- [ ] Data import/ export
-- [ ] Improve favicon
-- [ ] Pick a better produce name
-- [ ] Proper feedback channel
-- [ ] Support mobile
-- [ ] Welcome tutorial
+### **UI / UX**
+
+* [ ] Inconsistent UI when creating folder, renaming board, or moving board to folder
+
+---
+
+## **✨ Features**
+
+### **Navigation & Structure**
+
+* [ ] Implement app router for folders
+* [ ] Add data import/export
+
+### **Branding**
+
+* [ ] Improve favicon
+* [ ] Pick a better product name
+
+### **User Experience**
+
+* [ ] Add proper feedback/support channel
+* [ ] Create welcome onboarding/tutorial
+* [ ] Add mobile support
+
+### **Drawing Tools**
+
+* [ ] Text tool
+* [ ] Straight-line tool
+* [ ] Custom backgrounds
