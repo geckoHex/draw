@@ -285,17 +285,17 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       </div>
 
       {/* Sidebar */}
-      <Card className="m-4 w-64 shrink-0 flex flex-col gap-4 p-4 h-[calc(100vh-2rem)] bg-white shadow-lg z-10">
+      <Card className="m-4 w-64 shrink-0 flex flex-col gap-4 p-4 h-[calc(100vh-2rem)] bg-transparent border-0 shadow-none rounded-none z-10">
         <div className="space-y-4">
             <div className="flex flex-col gap-2">
-                <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="self-start -ml-2 text-muted-foreground">
+                <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="self-start -ml-2 text-muted-foreground shadow-none bg-transparent">
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Back to Home
                 </Button>
                 <Input
-                    value={title}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-                    className="h-8 font-semibold"
+                  value={title}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+                  className="h-8 font-semibold bg-transparent border-0 shadow-none"
                 />
             </div>
         </div>
@@ -304,21 +304,21 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Tools</h2>
-          <div className="flex bg-muted p-1 rounded-lg">
+          <div className="flex p-1 rounded-none bg-transparent">
             <div className="grid grid-cols-2 w-full gap-1">
                 <Button
-                    variant={tool === 'pen' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setTool('pen')}
-                    className={tool === 'pen' ? 'bg-white shadow-sm' : 'hover:bg-transparent'}
+                  variant={tool === 'pen' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setTool('pen')}
+                  className={tool === 'pen' ? 'bg-transparent shadow-none' : 'hover:bg-transparent'}
                 >
                     <Pen className="h-4 w-4 mr-2" /> Pen
                 </Button>
                 <Button
-                    variant={tool === 'eraser' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setTool('eraser')}
-                    className={tool === 'eraser' ? 'bg-white shadow-sm' : 'hover:bg-transparent'}
+                  variant={tool === 'eraser' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setTool('eraser')}
+                  className={tool === 'eraser' ? 'bg-transparent shadow-none' : 'hover:bg-transparent'}
                 >
                     <Eraser className="h-4 w-4 mr-2" /> Eraser
                 </Button>
@@ -328,7 +328,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Color</h2>
-          <ColorPicker value={color} onChange={setColor} />
+          <ColorPicker value={color} onChange={setColor} triggerClassName="shadow-none bg-transparent" />
         </div>
 
         <div className="space-y-4">
@@ -343,6 +343,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
             min={1}
             step={1}
             className="w-full"
+            thumbClassName="bg-transparent shadow-none"
           />
         </div>
 
@@ -351,10 +352,10 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         <div className="space-y-2">
             <h2 className="text-sm font-medium">History</h2>
             <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={undo} disabled={strokes.length === 0}>
+                <Button variant="outline" onClick={undo} disabled={strokes.length === 0} className="shadow-none bg-transparent">
                     <Undo className="h-4 w-4 mr-2" /> Undo
                 </Button>
-                <Button variant="outline" onClick={redo} disabled={redoStack.length === 0}>
+                <Button variant="outline" onClick={redo} disabled={redoStack.length === 0} className="shadow-none bg-transparent">
                     <Redo className="h-4 w-4 mr-2" /> Redo
                 </Button>
             </div>
@@ -365,11 +366,11 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Actions</h2>
           <div className="flex flex-col gap-2">
-            <Button variant="outline" onClick={downloadCanvas} className="w-full justify-center">
+            <Button variant="outline" onClick={downloadCanvas} className="w-full justify-center shadow-none bg-transparent">
               <Download className="mr-2 h-4 w-4" />
               Save Image
             </Button>
-            <Button variant="outline" onClick={clearCanvas} className="w-full justify-center">
+            <Button variant="outline" onClick={clearCanvas} className="w-full justify-center shadow-none bg-transparent">
               <Trash2 className="mr-2 h-4 w-4" />
               Clear Board
             </Button>

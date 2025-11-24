@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 interface ColorPickerProps {
   value: string
   onChange: (color: string) => void
+  triggerClassName?: string
 }
 
 const PRESET_COLORS = [
@@ -31,7 +32,7 @@ const PRESET_COLORS = [
   "#F43F5E", // Rose
 ]
 
-export function ColorPicker({ value, onChange }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, triggerClassName }: ColorPickerProps) {
   const [open, setOpen] = React.useState(false)
 
   const handleColorChange = (color: string) => {
@@ -41,10 +42,10 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+        <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-start text-left font-normal"
+          className={cn("w-full justify-start text-left font-normal", triggerClassName)}
         >
           <div className="flex items-center gap-2 w-full">
             <div
