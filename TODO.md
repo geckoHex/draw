@@ -26,6 +26,7 @@
 * [ ] Add proper feedback/support channel
 * [ ] Create welcome onboarding/tutorial
 * [ ] Add mobile support
+* [ ] Better context menus
 
 ### **Drawing Tools**
 
