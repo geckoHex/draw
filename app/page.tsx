@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput, Settings } from "lucide-react";
@@ -31,6 +31,8 @@ import { FolderModal } from "@/components/folder-modal";
 const BOARDS_PER_PAGE = 20;
 
 export default function Home() {
+  const params = useParams<{ id?: string }>();
+  const initialFolderId = params.id ?? null;
   const [boards, setBoards] = useState<Board[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [folderBoardCounts, setFolderBoardCounts] = useState<Record<string, number>>({});
@@ -47,9 +49,9 @@ export default function Home() {
   const [draggedBoardId, setDraggedBoardId] = useState<string | null>(null);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(initialFolderId);
   const observerTarget = useRef<HTMLDivElement>(null);
-  const initialized = useRef(false);
+  const loadedFolderId = useRef<string | null | undefined>(undefined);
   const router = useRouter();
 
   const loadMoreBoards = useCallback(async () => {
@@ -155,14 +157,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (loadedFolderId.current === initialFolderId) return;
+    loadedFolderId.current = initialFolderId;
+    setSelectedFolderId(initialFolderId);
 
     const loadInitialData = async () => {
       setInitialLoading(true);
       try {
         const [newBoards, loadedFolders, loadedFolderBoardCounts] = await Promise.all([
-          getRootBoardsPaginated(BOARDS_PER_PAGE, 0),
+          initialFolderId
+            ? getBoardsByFolder(initialFolderId)
+            : getRootBoardsPaginated(BOARDS_PER_PAGE, 0),
           getAllFolders(),
           getFolderBoardCounts()
         ]);
@@ -171,7 +176,7 @@ export default function Home() {
         setFolders(loadedFolders);
         setFolderBoardCounts(loadedFolderBoardCounts);
         setOffset(newBoards.length);
-        setHasMore(newBoards.length >= BOARDS_PER_PAGE);
+        setHasMore(initialFolderId ? false : newBoards.length >= BOARDS_PER_PAGE);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -180,7 +185,7 @@ export default function Home() {
     };
     
     loadInitialData();
-  }, []);
+  }, [initialFolderId]);
 
   useEffect(() => {
     // Update relative time every minute
@@ -328,24 +333,12 @@ export default function Home() {
     }
   };
 
-  const handleFolderClick = async (folderId: string) => {
-    setSelectedFolderId(folderId);
-    setSearchQuery("");
-    setIsLoading(true);
-    try {
-      const folderBoards = await getBoardsByFolder(folderId);
-      setBoards(folderBoards);
-      setHasMore(false); // No pagination in folder view
-    } catch (error) {
-      console.error('Failed to load folder boards:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleFolderClick = (folderId: string) => {
+    router.push(`/folder/${folderId}`);
   };
 
-  const handleBackToRoot = async () => {
-    setSelectedFolderId(null);
-    await loadRootBoards();
+  const handleBackToRoot = () => {
+    router.push('/');
   };
 
   // Show nothing while initial data is loading
