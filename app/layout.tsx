@@ -35,7 +35,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Draw",
+  title: "GeckoDraw",
   description: "Free, local, no account whiteboard creator and manager with power-user features and a modern UI.",
 };
 

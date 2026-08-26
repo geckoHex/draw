@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -352,8 +353,18 @@ export default function Home() {
 
       <div className="fixed inset-x-4 top-4 z-50 md:inset-x-8 md:top-6">
         <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-3xl border border-white/70 bg-white/80 p-3 shadow-lg shadow-slate-900/10 backdrop-blur-xl md:gap-6 md:px-5">
-          <div className="flex items-center gap-2 whitespace-nowrap text-sm font-bold tracking-tight text-gray-900 sm:text-lg">
-            <span>GeckoHex/Draw</span>
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <Image
+              src="/images/Gecko.png"
+              alt="GeckoHex Draw"
+              width={1145}
+              height={1374}
+              className="h-8 w-auto"
+              priority
+            />
+            <span className="text-base font-bold tracking-tight text-gray-900 sm:text-xl">
+              Gecko Draw
+            </span>
             <Link
               href="/settings"
               aria-label="Settings"
