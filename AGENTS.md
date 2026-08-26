@@ -38,4 +38,6 @@ When making changes you may test your changes with `npm run build`. You may also
 **Never start or modify my dev server on port 3000.**
 Do not make git commits.
 
-After you finish, give me a suggested one line commit message.
+After you finish making changes edit `public/version.txt`. Update the version number according to semantic version numbering (`major.minor.patch`). Preserve the file format: 1 line only that says `Version x.x.x`.
+
+Finally, give me a suggested one line commit message.
