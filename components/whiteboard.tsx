@@ -13,6 +13,10 @@ import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/db'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
 import { getSmoothingFactor, usePenSmoothing, useShowSaveStatus } from '@/lib/drawing-settings'
+import { useDarkCanvas } from '@/lib/interface-settings'
+
+const LIGHT_CANVAS_COLOR = '#ffffff'
+const DARK_CANVAS_COLOR = '#111318'
 
 type Tool = 'pen' | 'eraser'
 
@@ -35,6 +39,13 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [loadedBoardId, setLoadedBoardId] = useState<string | null>(null)
   const penSmoothing = usePenSmoothing()
   const showSaveStatus = useShowSaveStatus()
+  const darkCanvas = useDarkCanvas()
+  const canvasColor = darkCanvas ? DARK_CANVAS_COLOR : LIGHT_CANVAS_COLOR
+  const effectiveColor = darkCanvas && color.toLowerCase() === '#000000'
+    ? '#FFFFFF'
+    : !darkCanvas && color.toLowerCase() === '#ffffff'
+      ? '#000000'
+      : color
   
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [redoStack, setRedoStack] = useState<Stroke[]>([])
@@ -111,13 +122,13 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     void save()
   }, [boardId, loadedBoardId, title, strokes])
 
-  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+  const drawStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (stroke.points.length < 1) return
 
     ctx.beginPath()
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    ctx.strokeStyle = stroke.tool === 'eraser' ? '#ffffff' : stroke.color
+    ctx.strokeStyle = stroke.tool === 'eraser' ? canvasColor : stroke.color
     ctx.lineWidth = stroke.size
 
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
@@ -125,7 +136,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
     }
     ctx.stroke()
-  }
+  }, [canvasColor])
 
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current
@@ -148,8 +159,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         ctx.scale(dpr, dpr)
     }
 
-    // Clear and fill white
-    ctx.fillStyle = '#ffffff'
+    // Clear and fill with the selected canvas surface.
+    ctx.fillStyle = canvasColor
     ctx.fillRect(0, 0, rect.width, rect.height)
 
     // Draw all saved strokes
@@ -159,7 +170,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     if (currentStroke) {
       drawStroke(ctx, currentStroke)
     }
-  }, [strokes, currentStroke])
+  }, [strokes, currentStroke, canvasColor, drawStroke])
 
   useEffect(() => {
     renderCanvas()
@@ -201,7 +212,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     setIsDrawing(true)
     setCurrentStroke({
       points: [coords],
-      color: color,
+      color: effectiveColor,
       size: brushSize[0],
       tool: tool
     })
@@ -311,10 +322,14 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   }, [brushSize]);
 
   return (
-    <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Canvas Area */}
       <div className="flex-1 p-4 flex items-center justify-center">
-        <div ref={containerRef} className="w-full h-[calc(100vh-2rem)] bg-white rounded-2xl shadow-lg relative overflow-hidden" style={cursorStyle}>
+        <div
+          ref={containerRef}
+          className="relative h-[calc(100vh-2rem)] w-full overflow-hidden rounded-2xl border border-border/50 shadow-lg"
+          style={{ ...cursorStyle, backgroundColor: canvasColor }}
+        >
           <canvas
             ref={canvasRef}
             onMouseDown={startDrawing}
@@ -330,7 +345,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       </div>
 
       {/* Sidebar */}
-      <Card className="m-4 w-64 shrink-0 flex flex-col gap-4 p-4 h-[calc(100vh-2rem)] bg-background/80 backdrop-blur-sm border border-border shadow-lg rounded-2xl z-10">
+      <Card className="m-4 flex h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-4 rounded-2xl border border-border bg-card/88 p-4 shadow-lg backdrop-blur-xl z-10">
         <div className="space-y-4">
             <div className="flex flex-col gap-2">
                 <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="self-start -ml-2 text-muted-foreground shadow-none bg-transparent">
@@ -389,7 +404,12 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Color</h2>
-          <ColorPicker value={color} onChange={setColor} triggerClassName="shadow-none bg-transparent w-full" />
+          <ColorPicker
+            value={effectiveColor}
+            onChange={setColor}
+            darkCanvas={darkCanvas}
+            triggerClassName="w-full bg-transparent shadow-none"
+          />
         </div>
 
         <div className="space-y-4">
@@ -411,7 +431,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
             min={1}
             step={1}
             className="w-full"
-            thumbClassName="bg-white border-2 border-foreground shadow-md"
+            thumbClassName="border-2 border-foreground bg-background shadow-md"
           />
         </div>
 

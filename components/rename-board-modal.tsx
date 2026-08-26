@@ -55,7 +55,7 @@ export function RenameBoardModal({
       }}
     >
       <div
-        className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="rename-board-title"
@@ -63,7 +63,7 @@ export function RenameBoardModal({
         <div className="mb-5 pr-10">
           <h2
             id="rename-board-title"
-            className="text-xl font-semibold text-gray-900"
+            className="text-xl font-semibold text-foreground"
           >
             Rename Board
           </h2>
@@ -72,7 +72,7 @@ export function RenameBoardModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label="Close rename board dialog"
         >
           <X className="h-4 w-4" />
@@ -87,7 +87,7 @@ export function RenameBoardModal({
           <div className="space-y-2">
             <label
               htmlFor="board-name"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-foreground"
             >
               Board Name
             </label>
@@ -114,7 +114,7 @@ export function RenameBoardModal({
             <Button
               type="submit"
               disabled={!name.trim()}
-              className="h-10 flex-1 rounded-xl bg-gray-900 hover:bg-gray-800 disabled:cursor-not-allowed"
+              className="h-10 flex-1 rounded-xl disabled:cursor-not-allowed"
             >
               Save Changes
             </Button>

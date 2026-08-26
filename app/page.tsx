@@ -29,6 +29,7 @@ import { generateBoardName } from "@/lib/name-generator";
 import { BoardPreview } from "@/components/board-preview";
 import { FolderCard } from "@/components/folder-card";
 import { FolderModal } from "@/components/folder-modal";
+import { getFolderAccent, getFolderTint } from "@/lib/utils";
 
 const BOARDS_PER_PAGE = 20;
 
@@ -361,29 +362,19 @@ export default function Home() {
   // Show nothing while initial data is loading
   if (initialLoading) {
     return (
-      <main className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
-        {/* Static background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl" />
-        </div>
+      <main className="app-background min-h-screen p-8 md:p-12 relative overflow-hidden">
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 px-8 pb-8 pt-32 md:px-12 md:pb-12 md:pt-36 relative overflow-hidden">
-      {/* Static background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl" />
-      </div>
+    <main className="app-background min-h-screen px-8 pb-8 pt-32 md:px-12 md:pb-12 md:pt-36 relative overflow-hidden">
 
       <div className="fixed inset-x-4 top-4 z-50 md:inset-x-8 md:top-6">
-        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-3xl border border-white/70 bg-white/80 p-3 shadow-lg shadow-slate-900/10 backdrop-blur-xl md:gap-6 md:px-5">
+        <div className="glass-surface mx-auto grid max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-3xl border p-3 backdrop-blur-xl md:gap-6 md:px-5">
           <div className="flex items-center gap-2 whitespace-nowrap">
             <Image
               src="/images/Gecko.png"
@@ -393,14 +384,14 @@ export default function Home() {
               className="h-8 w-auto"
               priority
             />
-            <span className="text-base font-bold tracking-tight text-gray-900 sm:text-xl">
+            <span className="text-base font-bold tracking-tight text-foreground sm:text-xl">
               Gecko Draw
             </span>
             <Link
               href="/settings"
               aria-label="Settings"
               title="Settings"
-              className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <Settings className="h-4 w-4" />
             </Link>
@@ -408,21 +399,21 @@ export default function Home() {
 
           <div className="flex justify-center">
             <div className="relative w-full max-w-xl">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-10 h-12 rounded-2xl border-gray-200 focus:border-gray-300 shadow-sm"
+                className="h-12 rounded-2xl border-border bg-background/75 pl-12 pr-10 shadow-sm focus:border-ring"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
                   aria-label="Clear search"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 hover:bg-accent"
                 >
-                  <X className="h-4 w-4 text-gray-400" />
+                  <X className="h-4 w-4 text-muted-foreground" />
                 </button>
               )}
             </div>
@@ -436,7 +427,7 @@ export default function Home() {
               size="icon"
               aria-label="New folder"
               title="New folder"
-              className="h-11 w-11 rounded-2xl bg-white/70"
+              className="h-11 w-11 rounded-2xl bg-background/70"
             >
               <FolderPlus className="h-5 w-5" />
             </Button>
@@ -445,7 +436,7 @@ export default function Home() {
               size="icon"
               aria-label="New board"
               title="New board"
-              className="h-11 w-11 rounded-2xl bg-linear-to-r from-gray-900 to-gray-800 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20"
+              className="h-11 w-11 rounded-2xl bg-primary text-primary-foreground shadow-lg"
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -462,11 +453,11 @@ export default function Home() {
               size="icon"
               aria-label="Back to boards"
               title="Back to boards"
-              className="h-10 w-10 rounded-xl bg-white/70"
+              className="h-10 w-10 rounded-xl bg-background/70"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
               {folders.find(f => f.id === selectedFolderId)?.name}
             </h1>
           </div>
@@ -475,7 +466,7 @@ export default function Home() {
         {/* Folders Grid - Only show in root view */}
         {!selectedFolderId && filteredFolders.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
               {searchQuery ? `Folders (${filteredFolders.length})` : 'Folders'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -511,7 +502,7 @@ export default function Home() {
                     key={board.id}
                     draggable={!selectedFolderId}
                     onDragStart={(e) => handleDragStart(e, board.id)}
-                    className="group relative flex h-[260px] w-full cursor-pointer flex-col rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-gray-300 hover:shadow-md"
+                    className="group relative flex h-[260px] w-full cursor-pointer flex-col rounded-2xl border border-border bg-card/90 p-4 shadow-sm transition-colors duration-200 hover:border-ring/45"
                     onClick={() => router.push(`/board/${board.id}`)}
                     onContextMenu={(event) => {
                       event.preventDefault()
@@ -525,19 +516,19 @@ export default function Home() {
                     {/* Card Header */}
                     <div className="mb-3 flex items-start gap-3">
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-base font-semibold leading-tight text-gray-900" title={board.title || "Untitled Board"}>
+                        <h3 className="truncate text-base font-semibold leading-tight text-card-foreground" title={board.title || "Untitled Board"}>
                           {board.title || "Untitled Board"}
                         </h3>
                         <div className="mt-1 flex min-w-0 items-center gap-2">
-                          <span className="shrink-0 text-xs text-gray-500">
+                          <span className="shrink-0 text-xs text-muted-foreground">
                             {timeAgo(board.updatedAt)}
                           </span>
                           {boardFolder && (
                             <span
                               className="inline-flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium"
                               style={{
-                                backgroundColor: `${boardFolder.color}15`,
-                                color: boardFolder.color
+                                backgroundColor: getFolderTint(boardFolder.color),
+                                color: getFolderAccent(boardFolder.color)
                               }}
                             >
                               <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -557,7 +548,7 @@ export default function Home() {
                             size="icon"
                             aria-label={`Board options for ${board.title || "Untitled Board"}`}
                             title="Board options"
-                            className="ipad-options-trigger -mr-1 h-8 w-8 shrink-0 rounded-lg text-gray-400 opacity-100 hover:bg-gray-100 hover:text-gray-700 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                            className="ipad-options-trigger -mr-1 h-8 w-8 shrink-0 rounded-lg text-muted-foreground opacity-100 hover:bg-accent hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                             onClick={(event) => event.stopPropagation()}
                           >
                             <MoreVertical className="h-4 w-4" />
@@ -596,7 +587,7 @@ export default function Home() {
                     </div>
 
                     {/* Preview Container */}
-                    <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200/80 bg-white">
+                    <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background">
                       <BoardPreview strokes={board.strokes} />
                     </div>
                 </div>
@@ -608,9 +599,9 @@ export default function Home() {
           /* No Search Results */
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <div className="text-center space-y-3">
-              <Search className="h-12 w-12 text-gray-300 mx-auto" />
-              <h3 className="text-xl font-semibold text-gray-900">No results found</h3>
-              <p className="text-gray-600 max-w-sm">
+              <Search className="mx-auto h-12 w-12 text-muted-foreground/55" />
+              <h3 className="text-xl font-semibold text-foreground">No results found</h3>
+              <p className="max-w-sm text-muted-foreground">
                 No boards or folders match &ldquo;{searchQuery}&rdquo;. Try a different search term.
               </p>
               <Button
@@ -627,7 +618,7 @@ export default function Home() {
         {/* Loading indicator */}
         {isLoading && boards.length > 0 && !searchQuery && (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
@@ -639,8 +630,8 @@ export default function Home() {
           <div className="fixed inset-x-6 bottom-8 top-28 flex items-center justify-center">
             <div className="flex max-w-sm flex-col items-center gap-5 text-center">
               <div className="space-y-1.5">
-                <h3 className="text-2xl font-bold tracking-tight text-gray-900">No boards yet</h3>
-                <p className="text-sm leading-6 text-gray-600">
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">No boards yet</h3>
+                <p className="text-sm leading-6 text-muted-foreground">
                   Click the plus button to start one!
                 </p>
               </div>

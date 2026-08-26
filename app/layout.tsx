@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Geist_Mono } from "next/font/google";
 import { IPadAppBehavior } from "@/components/ipad-app-behavior";
+import { ThemeManager } from "@/components/theme-manager";
 import "./globals.css";
 
 const satoshi = localFont({
@@ -58,7 +59,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#f8fafc",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -70,7 +71,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { try { const preference = localStorage.getItem("draw.theme") || "system"; const dark = preference === "dark" || (preference === "system" && matchMedia("(prefers-color-scheme: dark)").matches); const root = document.documentElement; root.classList.toggle("dark", dark); root.dataset.theme = dark ? "dark" : "light"; root.style.colorScheme = dark ? "dark" : "light"; } catch {} })();`,
+          }}
+        />
+      </head>
       <body
         className={`${satoshi.variable} ${geistMono.variable} antialiased`}
       >
@@ -79,6 +87,7 @@ export default function RootLayout({
           disable={process.env.NODE_ENV === "development"}
         >
           <IPadAppBehavior />
+          <ThemeManager />
           {children}
         </SerwistProvider>
       </body>

@@ -3,6 +3,7 @@
 import { Folder, MoreVertical, Trash2, Edit2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import { getFolderAccent, getFolderTint } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -33,6 +34,7 @@ export function FolderCard({
   onDrop,
 }: FolderCardProps) {
   const [contextMenuPoint, setContextMenuPoint] = useState<ContextMenuPoint | null>(null)
+  const accentColor = getFolderAccent(color)
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -48,7 +50,7 @@ export function FolderCard({
 
   return (
     <div
-      className="group relative flex items-center gap-3 p-4 w-full rounded-2xl bg-white border border-gray-200 hover:border-gray-300 shadow-sm transition-all duration-200 cursor-pointer"
+      className="group relative flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card/90 p-4 shadow-sm transition-colors duration-200 hover:border-ring/45"
       onClick={onClick}
       onContextMenu={(event) => {
         event.preventDefault()
@@ -62,17 +64,17 @@ export function FolderCard({
       {/* Folder Icon */}
       <div
         className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-        style={{ backgroundColor: `${color}15` }}
+        style={{ backgroundColor: getFolderTint(color) }}
       >
-        <Folder className="h-6 w-6" fill="currentColor" style={{ color }} />
+        <Folder className="h-6 w-6" fill="currentColor" style={{ color: accentColor }} />
       </div>
 
       {/* Folder Info */}
       <div className="flex-1 flex flex-col gap-0.5 min-w-0">
-        <h3 className="text-base font-semibold text-gray-900 truncate leading-tight" title={name}>
+        <h3 className="truncate text-base font-semibold leading-tight text-card-foreground" title={name}>
           {name}
         </h3>
-        <span className="text-xs text-gray-500 font-medium">
+        <span className="text-xs font-medium text-muted-foreground">
           {boardCount} board{boardCount !== 1 ? 's' : ''}
         </span>
       </div>
@@ -85,7 +87,7 @@ export function FolderCard({
           <Button
             variant="ghost"
             size="icon"
-            className="ipad-options-trigger h-9 w-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+            className="ipad-options-trigger h-9 w-9 shrink-0 rounded-xl text-muted-foreground opacity-0 transition-colors hover:bg-accent hover:text-foreground group-hover:opacity-100"
             aria-label={`Folder options for ${name}`}
             title="Folder options"
             onClick={(event) => event.stopPropagation()}

@@ -9,10 +9,10 @@ interface ColorPickerProps {
   value: string
   onChange: (color: string) => void
   triggerClassName?: string
+  darkCanvas?: boolean
 }
 
-const PRESET_COLORS = [
-  { name: "Black", value: "#000000" },
+const ACCENT_COLORS = [
   { name: "Salmon", value: "#EF4444" },
   { name: "Orange", value: "#F97316" },
   { name: "Tangerine", value: "#F59E0B" },
@@ -32,9 +32,18 @@ const PRESET_COLORS = [
   { name: "Rose", value: "#F43F5E" },
 ]
 
-export function ColorPicker({ value, onChange, triggerClassName }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, triggerClassName, darkCanvas = false }: ColorPickerProps) {
   const [open, setOpen] = React.useState(false)
-  const selectedColor = PRESET_COLORS.find((color) => color.value === value)
+  const presetColors = React.useMemo(
+    () => [
+      darkCanvas
+        ? { name: "White", value: "#FFFFFF" }
+        : { name: "Black", value: "#000000" },
+      ...ACCENT_COLORS,
+    ],
+    [darkCanvas]
+  )
+  const selectedColor = presetColors.find((color) => color.value.toLowerCase() === value.toLowerCase())
 
   const handleColorChange = (color: string) => {
     onChange(color)
@@ -59,12 +68,14 @@ export function ColorPicker({ value, onChange, triggerClassName }: ColorPickerPr
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width)" align="center">
         <div className="grid grid-cols-6 gap-3">
-          {PRESET_COLORS.map((color) => (
+          {presetColors.map((color) => (
             <div key={color.value} className="group relative">
               <button
                 className={cn(
                   "h-6 w-6 rounded border-2 transition-colors",
-                  value === color.value ? "border-primary ring-2 ring-primary ring-offset-2" : "border-transparent"
+                  value.toLowerCase() === color.value.toLowerCase()
+                    ? "border-primary ring-2 ring-primary ring-offset-2 ring-offset-popover"
+                    : "border-border/60"
                 )}
                 style={{ backgroundColor: color.value }}
                 onClick={() => handleColorChange(color.value)}

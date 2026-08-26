@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
+import { getFolderAccent } from "@/lib/utils"
 
 interface FolderModalProps {
   isOpen: boolean
@@ -64,7 +65,7 @@ export function FolderModal({
       }}
     >
       <div
-        className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="folder-modal-title"
@@ -75,7 +76,7 @@ export function FolderModal({
         <div className="mb-5 pr-10">
           <h2
             id="folder-modal-title"
-            className="text-xl font-semibold text-gray-900"
+            className="text-xl font-semibold text-foreground"
           >
             {title}
           </h2>
@@ -84,7 +85,7 @@ export function FolderModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           aria-label="Close folder dialog"
         >
           <X className="h-4 w-4" />
@@ -99,7 +100,7 @@ export function FolderModal({
           <div className="space-y-2">
             <label
               htmlFor="folder-name"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-foreground"
             >
               Folder Name
             </label>
@@ -114,10 +115,10 @@ export function FolderModal({
           </div>
 
           <fieldset className="mt-5 space-y-2">
-            <legend className="text-sm font-medium text-gray-700">
+            <legend className="text-sm font-medium text-foreground">
               Choose Color
             </legend>
-            <div className="grid grid-cols-7 gap-2 rounded-xl bg-gray-50 p-3">
+            <div className="grid grid-cols-7 gap-2 rounded-xl bg-muted/55 p-3">
               {FOLDER_COLORS.map((folderColor) => (
                 <button
                   key={folderColor.value}
@@ -125,10 +126,10 @@ export function FolderModal({
                   onClick={() => setColor(folderColor.value)}
                   className={`aspect-square w-full rounded-lg transition-opacity hover:opacity-85 ${
                     color === folderColor.value
-                      ? "ring-2 ring-gray-900 ring-offset-2 ring-offset-gray-50"
+                      ? "ring-2 ring-foreground ring-offset-2 ring-offset-card"
                       : ""
                   }`}
-                  style={{ backgroundColor: folderColor.value }}
+                  style={{ backgroundColor: getFolderAccent(folderColor.value) }}
                   aria-label={`Select ${folderColor.name}`}
                   aria-pressed={color === folderColor.value}
                 />
@@ -148,7 +149,7 @@ export function FolderModal({
             <Button
               type="submit"
               disabled={!name.trim()}
-              className="h-10 flex-1 rounded-xl bg-gray-900 hover:bg-gray-800 disabled:cursor-not-allowed"
+              className="h-10 flex-1 rounded-xl disabled:cursor-not-allowed"
             >
               {initialName ? "Save Changes" : "Create Folder"}
             </Button>

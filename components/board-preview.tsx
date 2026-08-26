@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { type Stroke } from '@/lib/db'
+import { useDarkCanvas } from '@/lib/interface-settings'
+
+const LIGHT_CANVAS_COLOR = '#ffffff'
+const DARK_CANVAS_COLOR = '#111318'
 
 interface BoardPreviewProps {
   strokes: Stroke[]
@@ -11,6 +15,8 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const darkCanvas = useDarkCanvas()
+  const canvasColor = darkCanvas ? DARK_CANVAS_COLOR : LIGHT_CANVAS_COLOR
 
   useEffect(() => {
     const updateSize = () => {
@@ -42,13 +48,12 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
     
     ctx.scale(dpr, dpr)
     
-    // Clear canvas and fill with white (like the actual whiteboard)
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = canvasColor
     ctx.fillRect(0, 0, width, height)
 
     if (!strokes || strokes.length === 0) {
         // Draw placeholder text if empty
-        ctx.fillStyle = '#9ca3af' // text-muted-foreground
+        ctx.fillStyle = darkCanvas ? '#7f8490' : '#9ca3af'
         ctx.font = '14px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -99,7 +104,7 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
       ctx.beginPath()
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
-      ctx.strokeStyle = stroke.tool === 'eraser' ? '#ffffff' : stroke.color
+      ctx.strokeStyle = stroke.tool === 'eraser' ? canvasColor : stroke.color
       ctx.lineWidth = stroke.size
 
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
@@ -111,10 +116,10 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
 
     ctx.restore()
 
-  }, [strokes, dimensions])
+  }, [strokes, dimensions, canvasColor, darkCanvas])
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-white">
+    <div ref={containerRef} className="h-full w-full" style={{ backgroundColor: canvasColor }}>
       <canvas ref={canvasRef} />
     </div>
   )

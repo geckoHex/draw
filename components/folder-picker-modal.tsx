@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 import { type Folder } from "@/lib/db"
+import { getFolderAccent, getFolderTint } from "@/lib/utils"
 
 interface FolderPickerModalProps {
   isOpen: boolean
@@ -35,15 +36,15 @@ export function FolderPickerModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-8 space-y-6">
+      <div className="relative mx-4 w-full max-w-lg space-y-6 rounded-3xl border border-border bg-card p-8 text-card-foreground shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between pb-2">
-          <h2 className="text-2xl font-bold text-gray-900">Move to Folder</h2>
+          <h2 className="text-2xl font-bold text-foreground">Move to Folder</h2>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="rounded-xl hover:bg-gray-100"
+            className="rounded-xl hover:bg-accent"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -56,19 +57,19 @@ export function FolderPickerModal({
             onClick={() => handleSelect(null)}
             className={`w-full p-4 rounded-2xl text-left transition-all ${
               currentFolderId === null
-                ? "bg-gray-100 border-2 border-gray-300"
-                : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                ? "border-2 border-ring/45 bg-accent"
+                : "border-2 border-transparent bg-muted/45 hover:bg-accent/70"
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+                <svg className="h-5 w-5 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                 </svg>
               </div>
               <div>
-                <div className="font-semibold text-gray-900">All Boards</div>
-                <div className="text-sm text-gray-500">Move to root</div>
+                <div className="font-semibold text-foreground">All Boards</div>
+                <div className="text-sm text-muted-foreground">Move to root</div>
               </div>
             </div>
           </button>
@@ -81,27 +82,27 @@ export function FolderPickerModal({
                 onClick={() => handleSelect(folder.id)}
                 className={`w-full p-4 rounded-2xl text-left transition-all ${
                   currentFolderId === folder.id
-                    ? "border-2 border-gray-300"
-                    : "hover:bg-gray-50 border-2 border-transparent"
+                    ? "border-2 border-ring/45"
+                    : "border-2 border-transparent hover:bg-accent/55"
                 }`}
                 style={{
                   backgroundColor: currentFolderId === folder.id 
-                    ? `${folder.color}15` 
+                    ? getFolderTint(folder.color)
                     : 'transparent'
                 }}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: `${folder.color}20` }}
+                    style={{ backgroundColor: getFolderTint(folder.color, 13) }}
                   >
-                    <svg className="w-5 h-5" fill={folder.color} viewBox="0 0 20 20">
+                    <svg className="w-5 h-5" fill={getFolderAccent(folder.color)} viewBox="0 0 20 20">
                       <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                     </svg>
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900">{folder.name}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-semibold text-foreground">{folder.name}</div>
+                    <div className="text-sm text-muted-foreground">
                       {currentFolderId === folder.id ? "Current folder" : "Move here"}
                     </div>
                   </div>
@@ -109,7 +110,7 @@ export function FolderPickerModal({
               </button>
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="py-8 text-center text-muted-foreground">
               <p>No folders available</p>
               <p className="text-sm mt-1">Create a folder first to organize your boards</p>
             </div>

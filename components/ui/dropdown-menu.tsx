@@ -108,8 +108,8 @@ export function DropdownMenuItem({
       className={cn(
         "flex h-8 w-full items-center justify-start gap-1.5 rounded-md px-3 text-left text-sm font-medium transition-colors",
         variant === "destructive"
-          ? "text-red-600 hover:bg-red-50 hover:text-red-700"
-          : "text-gray-700 hover:bg-gray-100"
+          ? "text-destructive hover:bg-destructive/10 hover:text-destructive"
+          : "text-popover-foreground hover:bg-accent"
       )}
     >
       {icon && <span className="shrink-0">{icon}</span>}
