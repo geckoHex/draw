@@ -38,7 +38,8 @@ When making changes you may test your changes with `npm run build`. You may also
 **Never start or modify my dev server on port 3000.**
 Do not make git commits.
 
-After you finish making changes edit `public/version.json`. 
-1. Bump the `version` key's value. Use semantic versioning (major.minor.patch). Keep the file to one line: `Version x.x.x`. Major = multiple feature/UX/UI overhauls; minor = new feature, major UI change, or medium functionality change; patch = small tweak or fix.
-2. Write a one line suggested commit message based on the changes you made for `commit_message` key's value.
-3. Update the `authored_by` key's value to have your coding agent name (i.e., Codex, Claude).
+After making changes, update `public/version.json`:
+
+1. Bump `version` using semantic versioning: **major** for multiple feature/UX/UI overhauls, **minor** for a new feature, major UI change, or medium functionality change, and **patch** for small tweaks or fixes.
+2. Set `commit_message` to a one-line suggested commit message describing your changes.
+3. Set `authored_by` to your coding agent name (e.g., `Codex`, `Claude`).
