@@ -12,6 +12,7 @@ interface ImportDataModalProps {
 
 export function ImportDataModal({ onClose }: ImportDataModalProps) {
   const [file, setFile] = useState<File>()
+  const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [password, setPassword] = useState("")
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState("")
@@ -30,6 +31,11 @@ export function ImportDataModal({ onClose }: ImportDataModalProps) {
 
   const close = () => {
     if (!isImporting) onClose()
+  }
+
+  const selectFile = (selectedFile?: File) => {
+    setFile(selectedFile)
+    setError("")
   }
 
   const handleImport = async () => {
@@ -75,7 +81,7 @@ export function ImportDataModal({ onClose }: ImportDataModalProps) {
             Import data
           </h2>
           <p id="import-data-warning" className="mt-2 text-sm leading-relaxed text-destructive">
-            This will permanently overwrite all your current data and preferences.
+            This will overwrite everything.
           </p>
         </div>
 
@@ -96,21 +102,49 @@ export function ImportDataModal({ onClose }: ImportDataModalProps) {
           }}
         >
           <div className="space-y-2">
-            <label htmlFor="import-file" className="block text-sm font-medium text-foreground">
+            <span className="block text-sm font-medium text-foreground">
               Export file
-            </label>
-            <Input
-              ref={fileInputRef}
-              id="import-file"
-              type="file"
-              accept=".json,.csv,.encrypted,application/json,text/csv"
-              onChange={(event) => {
-                setFile(event.target.files?.[0])
-                setError("")
+            </span>
+            <label
+              htmlFor="import-file"
+              onDragEnter={(event) => {
+                event.preventDefault()
+                if (!isImporting) setIsDraggingFile(true)
               }}
-              disabled={isImporting}
-              className="h-11 rounded-xl px-3.5 py-2 text-sm"
-            />
+              onDragOver={(event) => {
+                event.preventDefault()
+                if (!isImporting) event.dataTransfer.dropEffect = "copy"
+              }}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setIsDraggingFile(false)
+                }
+              }}
+              onDrop={(event) => {
+                event.preventDefault()
+                setIsDraggingFile(false)
+                if (!isImporting) selectFile(event.dataTransfer.files[0])
+              }}
+              className={`flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-4 py-5 text-center transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background ${
+                isDraggingFile ? "border-primary bg-accent" : "border-border bg-background"
+              } ${isImporting ? "cursor-not-allowed opacity-50" : "hover:bg-accent"}`}
+            >
+              <Input
+                ref={fileInputRef}
+                id="import-file"
+                type="file"
+                accept=".json,.csv,.encrypted,application/json,text/csv"
+                onChange={(event) => selectFile(event.target.files?.[0])}
+                disabled={isImporting}
+                className="sr-only"
+              />
+              <span className="text-sm font-medium text-foreground">
+                {file ? file.name : "Drop an export file here"}
+              </span>
+              <span className="mt-1 text-sm text-muted-foreground">
+                {file ? "Drop or click to choose a different file" : "or click to browse"}
+              </span>
+            </label>
           </div>
 
           <div className="mt-5 space-y-2">
