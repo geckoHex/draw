@@ -26,3 +26,8 @@ export interface Folder {
   updatedAt: number;
   color?: string;
 }
+
+export interface Account {
+  id: string;
+  username: string;
+}

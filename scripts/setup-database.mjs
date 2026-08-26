@@ -23,6 +23,7 @@ function inspectExistingDatabase() {
         .map((row) => row.name)
     )
     const counts = {
+      accounts: tableNames.has("accounts") ? database.prepare("SELECT COUNT(*) AS count FROM accounts").get().count : 0,
       boards: tableNames.has("boards") ? database.prepare("SELECT COUNT(*) AS count FROM boards").get().count : 0,
       folders: tableNames.has("folders") ? database.prepare("SELECT COUNT(*) AS count FROM folders").get().count : 0,
       settings: tableNames.has("settings") ? database.prepare("SELECT COUNT(*) AS count FROM settings").get().count : 0,
@@ -38,7 +39,7 @@ async function confirmReset(existingData) {
   if (existingData === undefined) return true
 
   const summary = existingData
-    ? `${existingData.boards} board(s), ${existingData.folders} folder(s), and ${existingData.settings} setting(s)`
+    ? `${existingData.accounts} account(s), ${existingData.boards} board(s), ${existingData.folders} folder(s), and ${existingData.settings} setting(s)`
     : "an existing database file"
 
   const prompt = createInterface({ input: process.stdin, output: process.stdout })

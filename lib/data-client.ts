@@ -17,6 +17,11 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     },
   })
 
+  if (response.status === 401) {
+    window.location.reload()
+    throw new Error("Your sign-in has expired.")
+  }
+
   if (!response.ok) {
     const body = await response.json().catch(() => undefined) as { error?: string } | undefined
     throw new Error(body?.error ?? `GeckoDraw request failed with status ${response.status}.`)
@@ -46,6 +51,10 @@ export function saveBoard(board: Board): Promise<Board> {
 
 export async function getBoard(id: string): Promise<Board | undefined> {
   const response = await fetch(`/api/boards/${encodeURIComponent(id)}`, { cache: "no-store" })
+  if (response.status === 401) {
+    window.location.reload()
+    throw new Error("Your sign-in has expired.")
+  }
   if (response.status === 404) return undefined
   if (!response.ok) {
     const body = await response.json().catch(() => undefined) as { error?: string } | undefined
@@ -96,6 +105,10 @@ export function saveFolder(folder: Folder): Promise<Folder> {
 
 export async function getFolder(id: string): Promise<Folder | undefined> {
   const response = await fetch(`/api/folders/${encodeURIComponent(id)}`, { cache: "no-store" })
+  if (response.status === 401) {
+    window.location.reload()
+    throw new Error("Your sign-in has expired.")
+  }
   if (response.status === 404) return undefined
   if (!response.ok) {
     const body = await response.json().catch(() => undefined) as { error?: string } | undefined

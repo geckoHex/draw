@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Geist_Mono } from "next/font/google";
 import { IPadAppBehavior } from "@/components/ipad-app-behavior";
-import { ThemeManager } from "@/components/theme-manager";
+import { AuthGate } from "@/components/auth-gate";
 import "./globals.css";
 
 const satoshi = localFont({
@@ -40,7 +40,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   applicationName: "GeckoDraw",
   title: "GeckoDraw",
-  description: "Free, local, no account whiteboard creator and manager with power-user features and a modern UI.",
+  description: "A polished, local-network whiteboard creator and manager with private account storage.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -87,8 +87,7 @@ export default function RootLayout({
           disable={process.env.NODE_ENV === "development"}
         >
           <IPadAppBehavior />
-          <ThemeManager />
-          {children}
+          <AuthGate>{children}</AuthGate>
         </SerwistProvider>
       </body>
     </html>

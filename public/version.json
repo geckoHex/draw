@@ -1,5 +1,5 @@
 {
-    "version": "2.0.0",
-    "commit_message": "Replace browser storage with a self-contained SQLite backend",
+    "version": "3.0.0",
+    "commit_message": "Add local accounts with daily sign-in and isolated storage",
     "authored_by": "Codex"
 }

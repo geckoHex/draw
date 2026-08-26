@@ -4,6 +4,7 @@ import {
   saveBoard,
   updateBoard,
 } from "@/lib/server/database"
+import { requireAuthenticatedAccount } from "@/lib/server/auth"
 import { dataResponse, routeError } from "@/lib/server/http"
 import { parseBoard, parseBoardChanges } from "@/lib/server/validation"
 
@@ -14,10 +15,11 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
+    const account = requireAuthenticatedAccount(request)
     const { id } = await context.params
-    const board = getBoard(id)
+    const board = getBoard(account.id, id)
     return board
       ? dataResponse(board)
       : dataResponse({ error: "Board not found." }, 404)
@@ -28,9 +30,13 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PUT(request: Request, context: RouteContext) {
   try {
+    const account = requireAuthenticatedAccount(request)
     const { id } = await context.params
     const board = parseBoard(await request.json(), id)
-    return dataResponse(saveBoard(board))
+    const savedBoard = saveBoard(account.id, board)
+    return savedBoard
+      ? dataResponse(savedBoard)
+      : dataResponse({ error: "The board could not be saved." }, 400)
   } catch (error) {
     return routeError(error)
   }
@@ -38,8 +44,9 @@ export async function PUT(request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    const account = requireAuthenticatedAccount(request)
     const { id } = await context.params
-    const board = updateBoard(id, parseBoardChanges(await request.json()))
+    const board = updateBoard(account.id, id, parseBoardChanges(await request.json()))
     return board
       ? dataResponse(board)
       : dataResponse({ error: "Board not found." }, 404)
@@ -48,10 +55,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
+    const account = requireAuthenticatedAccount(request)
     const { id } = await context.params
-    return dataResponse({ deleted: deleteBoard(id) })
+    return dataResponse({ deleted: deleteBoard(account.id, id) })
   } catch (error) {
     return routeError(error)
   }

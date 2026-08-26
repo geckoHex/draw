@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { SettingToggle } from "@/components/ui/setting-toggle"
 import { Slider } from "@/components/ui/slider"
 import { ThemeSelect } from "@/components/ui/theme-select"
+import { AccountSettings } from "@/components/account-settings"
 import { cn } from "@/lib/utils"
 import {
   setPenSmoothing,
@@ -21,7 +22,7 @@ import {
   useThemePreference,
 } from "@/lib/interface-settings"
 
-type SettingsTab = "drawing" | "interface"
+type SettingsTab = "drawing" | "interface" | "account"
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("drawing")
@@ -48,7 +49,7 @@ export default function SettingsPage() {
         </div>
 
         <nav aria-label="Settings groups" className="mb-10 flex border-b border-border">
-          {(["drawing", "interface"] as const).map((tab) => (
+          {(["drawing", "interface", "account"] as const).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -129,6 +130,8 @@ export default function SettingsPage() {
             </div>
           </section>
         )}
+
+        {activeTab === "account" && <AccountSettings />}
 
       </div>
     </main>
