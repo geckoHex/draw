@@ -32,6 +32,11 @@ Remember to implement light and dark mode versions of UI that respond to the set
 
 Write clean, clear, and easily maintainable code that's easy to modify. Each file should have one clear purpose like grouped logic, a component, etc.
 
+### Storage
+
+Store **all user data** in an IndexedDB database called `GeckoDrawDB`. This includes canvases, folder structures, settings, etc. This database is the sole source of truth for the entire content and state of this app.
+Never use localstorage.
+
 ### Making Changes
 
 When making changes you may test your changes with `npm run build`. You may also run a git status or git diff as needed.
