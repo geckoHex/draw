@@ -391,14 +391,6 @@ export default function Home() {
               </span>
               <VersionInfo />
             </span>
-            <Link
-              href="/settings"
-              aria-label="Settings"
-              title="Settings"
-              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <Settings className="h-4 w-4" />
-            </Link>
           </div>
 
           <div className="flex justify-center">
@@ -424,6 +416,16 @@ export default function Home() {
           </div>
 
           <div className="flex gap-2">
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 rounded-2xl bg-background/70"
+            >
+              <Link href="/settings" aria-label="Settings" title="Settings">
+                <Settings className="h-5 w-5 text-muted-foreground" />
+              </Link>
+            </Button>
             <Button
               onClick={() => setShowFolderModal(true)}
               disabled={selectedFolderId !== null}

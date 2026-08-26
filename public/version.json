@@ -1,5 +1,5 @@
 {
-    "version": "1.0.4",
-    "commit_message": "Copy release notes from the version popup.",
+    "version": "1.0.5",
+    "commit_message": "Move the settings button beside the folder controls.",
     "authored_by": "Codex"
 }
