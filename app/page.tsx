@@ -40,6 +40,7 @@ export default function Home() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [folderBoardCounts, setFolderBoardCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [version, setVersion] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [boardToDelete, setBoardToDelete] = useState<{ id: string; title: string } | null>(null);
   const [boardToRename, setBoardToRename] = useState<{ id: string; title: string } | null>(null);
@@ -57,6 +58,16 @@ export default function Home() {
   const observerTarget = useRef<HTMLDivElement>(null);
   const loadedFolderId = useRef<string | null | undefined>(undefined);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/version.txt")
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load version");
+        return response.text();
+      })
+      .then((text) => setVersion(text.trim()))
+      .catch((error) => console.error("Failed to load version:", error));
+  }, []);
 
   const loadMoreBoards = useCallback(async () => {
     if (isLoading || !hasMore) return;
@@ -384,8 +395,15 @@ export default function Home() {
               className="h-8 w-auto"
               priority
             />
-            <span className="text-base font-bold tracking-tight text-foreground sm:text-xl">
-              Gecko Draw
+            <span className="flex flex-col justify-center">
+              <span className="text-base font-bold leading-none tracking-tight text-foreground sm:text-xl">
+                Gecko Draw
+              </span>
+              {version && (
+                <span className="mt-1 text-[9px] font-normal leading-none tracking-[0.12em] text-muted-foreground tabular-nums [font-family:var(--font-satoshi)] sm:text-[10px]">
+                  {version}
+                </span>
+              )}
             </span>
             <Link
               href="/settings"
