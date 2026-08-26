@@ -29,3 +29,5 @@ Write clean, clear, and easily maintainable code that's easy to modify. Each fil
 When making changes you may test your changes with `npm run build`. You may also run a git status or git diff as needed.
 **Never start or modify my dev server on port 3000.**
 Do not make git commits.
+
+After you finish, give me a suggested one line commit message.
