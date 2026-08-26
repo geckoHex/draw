@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
@@ -15,14 +15,14 @@ interface FolderModalProps {
 }
 
 const FOLDER_COLORS = [
-  "#3b82f6", // blue
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#f59e0b", // amber
-  "#10b981", // green
-  "#06b6d4", // cyan
-  "#f97316", // orange
-  "#6366f1", // indigo
+  { name: "Blue", value: "#3b82f6" },
+  { name: "Purple", value: "#8b5cf6" },
+  { name: "Pink", value: "#ec4899" },
+  { name: "Amber", value: "#f59e0b" },
+  { name: "Green", value: "#10b981" },
+  { name: "Cyan", value: "#06b6d4" },
+  { name: "Orange", value: "#f97316" },
+  { name: "Indigo", value: "#6366f1" },
 ]
 
 export function FolderModal({
@@ -35,6 +35,18 @@ export function FolderModal({
 }: FolderModalProps) {
   const [name, setName] = useState(initialName)
   const [color, setColor] = useState(initialColor)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const animationFrame = requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    })
+
+    return () => cancelAnimationFrame(animationFrame)
+  }, [isOpen])
 
   const handleSave = () => {
     if (name.trim()) {
@@ -43,94 +55,106 @@ export function FolderModal({
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSave()
-    } else if (e.key === "Escape") {
-      onClose()
-    }
-  }
-
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-8 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2">
-          <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="rounded-xl hover:bg-gray-100"
+        className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="folder-modal-title"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onClose()
+        }}
+      >
+        <div className="mb-5 pr-10">
+          <h2
+            id="folder-modal-title"
+            className="text-xl font-semibold text-gray-900"
           >
-            <X className="h-5 w-5" />
-          </Button>
+            {title}
+          </h2>
         </div>
 
-        {/* Form */}
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-gray-700">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          aria-label="Close folder dialog"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleSave()
+          }}
+        >
+          <div className="space-y-2">
+            <label
+              htmlFor="folder-name"
+              className="block text-sm font-medium text-gray-700"
+            >
               Folder Name
             </label>
             <Input
+              ref={inputRef}
+              id="folder-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleKeyDown}
               placeholder="e.g., Work Projects, Personal, Archive..."
-              className="h-14 rounded-2xl text-base px-4"
-              autoFocus
+              className="h-11 rounded-xl px-3.5 text-base"
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-gray-700">
+          <fieldset className="mt-5 space-y-2">
+            <legend className="text-sm font-medium text-gray-700">
               Choose Color
-            </label>
-            <div className="grid grid-cols-8 gap-3 p-4 bg-gray-50 rounded-2xl">
-              {FOLDER_COLORS.map((c) => (
+            </legend>
+            <div className="grid grid-cols-8 gap-2 rounded-xl bg-gray-50 p-3">
+              {FOLDER_COLORS.map((folderColor) => (
                 <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={`w-12 h-12 rounded-xl transition-all ${
-                    color === c
-                      ? "ring-2 ring-offset-2 ring-offset-gray-50 scale-110 shadow-lg"
-                      : "hover:scale-105 hover:shadow-md"
+                  key={folderColor.value}
+                  type="button"
+                  onClick={() => setColor(folderColor.value)}
+                  className={`aspect-square w-full rounded-lg transition-opacity hover:opacity-85 ${
+                    color === folderColor.value
+                      ? "ring-2 ring-gray-900 ring-offset-2 ring-offset-gray-50"
+                      : ""
                   }`}
-                  style={{ backgroundColor: c }}
-                  aria-label={`Select color ${c}`}
+                  style={{ backgroundColor: folderColor.value }}
+                  aria-label={`Select ${folderColor.name}`}
+                  aria-pressed={color === folderColor.value}
                 />
               ))}
             </div>
-          </div>
-        </div>
+          </fieldset>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 h-14 rounded-2xl text-base font-medium"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim()}
-            className="flex-1 h-14 rounded-2xl text-base font-medium bg-linear-to-r from-gray-900 to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {initialName ? "Save Changes" : "Create Folder"}
-          </Button>
-        </div>
+          <div className="mt-6 flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="h-10 flex-1 rounded-xl shadow-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!name.trim()}
+              className="h-10 flex-1 rounded-xl bg-gray-900 hover:bg-gray-800 disabled:cursor-not-allowed"
+            >
+              {initialName ? "Save Changes" : "Create Folder"}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   )
