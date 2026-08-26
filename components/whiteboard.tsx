@@ -28,6 +28,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const activeSavesRef = useRef(0)
+  const isStraightLineRef = useRef(false)
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
@@ -209,6 +210,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     const coords = getCoordinates(e)
     if (!coords) return
 
+    isStraightLineRef.current = 'shiftKey' in e && e.shiftKey
     setIsDrawing(true)
     setCurrentStroke({
       points: [coords],
@@ -227,6 +229,13 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
     setCurrentStroke(prev => {
       if (!prev) return null
+
+      if (isStraightLineRef.current) {
+        return {
+          ...prev,
+          points: [prev.points[0], coords]
+        }
+      }
       
       // Interpolate with the last point using the selected smoothing level.
       const lastPoint = prev.points[prev.points.length - 1]
@@ -247,6 +256,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     if (!isDrawing || !currentStroke) return
     
     setIsDrawing(false)
+    isStraightLineRef.current = false
     setStrokes(prev => [...prev, currentStroke])
     setCurrentStroke(null)
     setRedoStack([]) // Clear redo stack on new action
