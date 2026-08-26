@@ -12,7 +12,8 @@ import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { RenameBoardModal } from "@/components/rename-board-modal";
 import { FolderPickerModal } from "@/components/folder-picker-modal";
 import {
-  getBoardsPaginated,
+  getRootBoardsPaginated,
+  getFolderBoardCounts,
   deleteBoard,
   renameBoard,
   getAllFolders,
@@ -32,6 +33,7 @@ const BOARDS_PER_PAGE = 20;
 export default function Home() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [folderBoardCounts, setFolderBoardCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [boardToDelete, setBoardToDelete] = useState<{ id: string; title: string } | null>(null);
@@ -55,7 +57,7 @@ export default function Home() {
     
     setIsLoading(true);
     try {
-      const newBoards = await getBoardsPaginated(BOARDS_PER_PAGE, offset);
+      const newBoards = await getRootBoardsPaginated(BOARDS_PER_PAGE, offset);
       if (newBoards.length < BOARDS_PER_PAGE) {
         setHasMore(false);
       }
@@ -130,6 +132,28 @@ export default function Home() {
     }
   }, []);
 
+  const loadFolderBoardCounts = useCallback(async () => {
+    try {
+      setFolderBoardCounts(await getFolderBoardCounts());
+    } catch (error) {
+      console.error('Failed to load folder board counts:', error);
+    }
+  }, []);
+
+  const loadRootBoards = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const rootBoards = await getRootBoardsPaginated(BOARDS_PER_PAGE, 0);
+      setBoards(rootBoards);
+      setOffset(rootBoards.length);
+      setHasMore(rootBoards.length >= BOARDS_PER_PAGE);
+    } catch (error) {
+      console.error('Failed to load boards:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -137,13 +161,15 @@ export default function Home() {
     const loadInitialData = async () => {
       setInitialLoading(true);
       try {
-        const [newBoards, loadedFolders] = await Promise.all([
-          getBoardsPaginated(BOARDS_PER_PAGE, 0),
-          getAllFolders()
+        const [newBoards, loadedFolders, loadedFolderBoardCounts] = await Promise.all([
+          getRootBoardsPaginated(BOARDS_PER_PAGE, 0),
+          getAllFolders(),
+          getFolderBoardCounts()
         ]);
         
         setBoards(newBoards);
         setFolders(loadedFolders);
+        setFolderBoardCounts(loadedFolderBoardCounts);
         setOffset(newBoards.length);
         setHasMore(newBoards.length >= BOARDS_PER_PAGE);
       } catch (error) {
@@ -210,14 +236,16 @@ export default function Home() {
       // If we're in a folder view, remove the board from the list
       if (selectedFolderId) {
         setBoards(prev => prev.filter(board => board.id !== boardToMove.id));
+      } else if (folderId) {
+        setBoards(prev => prev.filter(board => board.id !== boardToMove.id));
       } else {
-        // Update the board's folderId in the list
         setBoards(prev => prev.map(board =>
           board.id === boardToMove.id
             ? { ...board, folderId, updatedAt: Date.now() }
             : board
         ));
       }
+      await loadFolderBoardCounts();
       setBoardToMove(null);
     }
   };
@@ -226,6 +254,7 @@ export default function Home() {
     if (boardToDelete) {
       await deleteBoard(boardToDelete.id);
       setBoards(prev => prev.filter(board => board.id !== boardToDelete.id));
+      await loadFolderBoardCounts();
       setBoardToDelete(null);
     }
   };
@@ -238,11 +267,8 @@ export default function Home() {
         setSelectedFolderId(null);
       }
       setFolderToDelete(null);
-      // Reload boards as they may have been moved out of the folder
-      setBoards([]);
-      setOffset(0);
-      setHasMore(true);
-      loadMoreBoards();
+      await loadFolderBoardCounts();
+      await loadRootBoards();
     }
   };
 
@@ -287,6 +313,7 @@ export default function Home() {
     if (draggedBoardId) {
       await moveBoardToFolder(draggedBoardId, folderId);
       setBoards(prev => prev.filter(board => board.id !== draggedBoardId));
+      await loadFolderBoardCounts();
       setDraggedBoardId(null);
     }
   };
@@ -296,6 +323,7 @@ export default function Home() {
     if (draggedBoardId && selectedFolderId) {
       await moveBoardToFolder(draggedBoardId, null);
       setBoards(prev => prev.filter(board => board.id !== draggedBoardId));
+      await loadFolderBoardCounts();
       setDraggedBoardId(null);
     }
   };
@@ -315,16 +343,9 @@ export default function Home() {
     }
   };
 
-  const handleBackToRoot = () => {
+  const handleBackToRoot = async () => {
     setSelectedFolderId(null);
-    setBoards([]);
-    setOffset(0);
-    setHasMore(true);
-    loadMoreBoards();
-  };
-
-  const getBoardCountForFolder = (folderId: string) => {
-    return boards.filter(board => board.folderId === folderId).length;
+    await loadRootBoards();
   };
 
   // Show nothing while initial data is loading
@@ -453,7 +474,7 @@ export default function Home() {
                   id={folder.id}
                   name={folder.name}
                   color={folder.color}
-                  boardCount={getBoardCountForFolder(folder.id)}
+                  boardCount={folderBoardCounts[folder.id] ?? 0}
                   onClick={() => handleFolderClick(folder.id)}
                   onDelete={() => setFolderToDelete({ id: folder.id, name: folder.name })}
                   onRename={() => setEditingFolder(folder)}
@@ -589,34 +610,17 @@ export default function Home() {
         )}
 
         {/* Intersection observer target - only when not searching */}
-        {!searchQuery && <div ref={observerTarget} className="h-4" />}
+        {!searchQuery && hasMore && <div ref={observerTarget} className="h-4" />}
 
         {/* Empty State */}
-        {boards.length === 0 && (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-24 px-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-linear-to-r from-blue-500/20 to-purple-500/20 blur-3xl rounded-full" />
-              <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-12 shadow-2xl shadow-black/10 border border-gray-200/50">
-                <div className="flex flex-col items-center gap-6 text-center max-w-md">
-                  <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
-                    <Plus className="w-10 h-10 text-gray-400" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-2xl font-bold text-gray-900">No boards yet</h3>
-                    <p className="text-gray-600">
-                      Create your first board to start drawing and collaborating
-                    </p>
-                  </div>
-                  <Button
-                    onClick={createNewBoard}
-                    size="lg"
-                    className="rounded-2xl px-8 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20 transition-all hover:scale-105 bg-linear-to-r from-gray-900 to-gray-800"
-                  >
-                    <Plus className="mr-2 h-5 w-5" />
-                    Create Your First Board
-                  </Button>
-                </div>
+        {!selectedFolderId && boards.length === 0 && folders.length === 0 && !searchQuery && (
+          <div className="fixed inset-x-6 bottom-8 top-28 flex items-center justify-center">
+            <div className="flex max-w-sm flex-col items-center gap-5 text-center">
+              <div className="space-y-1.5">
+                <h3 className="text-2xl font-bold tracking-tight text-gray-900">No boards yet</h3>
+                <p className="text-sm leading-6 text-gray-600">
+                  Click the plus button to start one!
+                </p>
               </div>
             </div>
           </div>

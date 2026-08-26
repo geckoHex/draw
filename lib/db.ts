@@ -116,7 +116,7 @@ export const getAllBoards = async (): Promise<Board[]> => {
   });
 };
 
-export const getBoardsPaginated = async (limit: number, offset: number): Promise<Board[]> => {
+export const getRootBoardsPaginated = async (limit: number, offset: number): Promise<Board[]> => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readonly');
@@ -131,11 +131,15 @@ export const getBoardsPaginated = async (limit: number, offset: number): Promise
     request.onsuccess = (event) => {
       const cursor = (event.target as IDBRequest).result;
       if (cursor) {
-        if (skipped < offset) {
+        const board = cursor.value as Board;
+
+        if (board.folderId != null) {
+          cursor.continue();
+        } else if (skipped < offset) {
           skipped++;
           cursor.continue();
         } else if (collected < limit) {
-          results.push(cursor.value);
+          results.push(board);
           collected++;
           cursor.continue();
         } else {
@@ -143,6 +147,30 @@ export const getBoardsPaginated = async (limit: number, offset: number): Promise
         }
       } else {
         resolve(results);
+      }
+    };
+  });
+};
+
+export const getFolderBoardCounts = async (): Promise<Record<string, number>> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    const counts: Record<string, number> = {};
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result;
+      if (cursor) {
+        const folderId = (cursor.value as Board).folderId;
+        if (folderId) {
+          counts[folderId] = (counts[folderId] ?? 0) + 1;
+        }
+        cursor.continue();
+      } else {
+        resolve(counts);
       }
     };
   });
