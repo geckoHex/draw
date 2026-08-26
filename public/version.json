@@ -1,5 +1,5 @@
 {
-    "version": "3.2.3",
-    "commit_message": "Polish the server offline screen",
+    "version": "3.3.0",
+    "commit_message": "Add cursor path selection and movement",
     "authored_by": "Codex"
 }

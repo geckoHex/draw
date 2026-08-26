@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
-import { Eraser, Pen, Trash2, Download, Undo, Redo, ChevronLeft, Check, Loader2 } from 'lucide-react'
+import { Eraser, Pen, MousePointer2, Trash2, Download, Undo, Redo, ChevronLeft, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Card } from '@/components/ui/card'
@@ -18,6 +18,7 @@ import { useDarkCanvas } from '@/lib/interface-settings'
 const LIGHT_CANVAS_COLOR = '#ffffff'
 const DARK_CANVAS_COLOR = '#111318'
 const CARDINAL_SNAP_THRESHOLD = 5 * Math.PI / 180
+const SELECTION_COLOR = '#3b82f6'
 
 function snapToCardinalAngle(start: Point, end: Point): Point {
   const deltaX = end.x - start.x
@@ -43,7 +44,89 @@ function snapToCardinalAngle(start: Point, end: Point): Point {
   }
 }
 
-type Tool = 'pen' | 'eraser'
+function distanceToSegment(point: Point, start: Point, end: Point) {
+  const deltaX = end.x - start.x
+  const deltaY = end.y - start.y
+  const lengthSquared = deltaX * deltaX + deltaY * deltaY
+
+  if (lengthSquared === 0) {
+    return Math.hypot(point.x - start.x, point.y - start.y)
+  }
+
+  const projection = Math.max(0, Math.min(1,
+    ((point.x - start.x) * deltaX + (point.y - start.y) * deltaY) / lengthSquared
+  ))
+  const closestX = start.x + projection * deltaX
+  const closestY = start.y + projection * deltaY
+  return Math.hypot(point.x - closestX, point.y - closestY)
+}
+
+function hitTestStroke(strokes: Stroke[], point: Point) {
+  for (let strokeIndex = strokes.length - 1; strokeIndex >= 0; strokeIndex -= 1) {
+    const stroke = strokes[strokeIndex]
+    const hitTolerance = Math.max(8, stroke.size / 2 + 5)
+    let isHit = false
+
+    if (stroke.points.length === 1) {
+      isHit = Math.hypot(
+        point.x - stroke.points[0].x,
+        point.y - stroke.points[0].y
+      ) <= hitTolerance
+    } else {
+      for (let pointIndex = 1; pointIndex < stroke.points.length; pointIndex += 1) {
+        if (distanceToSegment(point, stroke.points[pointIndex - 1], stroke.points[pointIndex]) <= hitTolerance) {
+          isHit = true
+          break
+        }
+      }
+    }
+
+    if (isHit) {
+      return stroke.tool === 'pen' ? strokeIndex : null
+    }
+  }
+
+  return null
+}
+
+function translateStroke(stroke: Stroke, offset: Point): Stroke {
+  return {
+    ...stroke,
+    points: stroke.points.map(point => ({
+      x: point.x + offset.x,
+      y: point.y + offset.y
+    }))
+  }
+}
+
+type Tool = 'cursor' | 'pen' | 'eraser'
+
+type CanvasAction =
+  | { type: 'add'; index: number; stroke: Stroke }
+  | { type: 'delete'; index: number; stroke: Stroke }
+  | { type: 'move'; index: number; before: Stroke; after: Stroke }
+
+function applyCanvasAction(strokes: Stroke[], action: CanvasAction, direction: 'undo' | 'redo') {
+  const nextStrokes = [...strokes]
+
+  if (action.type === 'add') {
+    if (direction === 'undo') {
+      nextStrokes.splice(action.index, 1)
+    } else {
+      nextStrokes.splice(action.index, 0, action.stroke)
+    }
+  } else if (action.type === 'delete') {
+    if (direction === 'undo') {
+      nextStrokes.splice(action.index, 0, action.stroke)
+    } else {
+      nextStrokes.splice(action.index, 1)
+    }
+  } else {
+    nextStrokes[action.index] = direction === 'undo' ? action.before : action.after
+  }
+
+  return nextStrokes
+}
 
 interface WhiteboardProps {
   boardId: string
@@ -54,6 +137,10 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const activeSavesRef = useRef(0)
   const isStraightLineRef = useRef(false)
+  const draggedStrokeIndexRef = useRef<number | null>(null)
+  const dragStartRef = useRef<Point | null>(null)
+  const draggedStrokeRef = useRef<Stroke | null>(null)
+  const dragOffsetRef = useRef<Point>({ x: 0, y: 0 })
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
@@ -74,8 +161,11 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       : color
   
   const [strokes, setStrokes] = useState<Stroke[]>([])
-  const [redoStack, setRedoStack] = useState<Stroke[]>([])
+  const [undoStack, setUndoStack] = useState<CanvasAction[]>([])
+  const [redoStack, setRedoStack] = useState<CanvasAction[]>([])
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
+  const [selectedStrokeIndex, setSelectedStrokeIndex] = useState<number | null>(null)
+  const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 })
   
   const [showClearModal, setShowClearModal] = useState(false)
   
@@ -93,10 +183,17 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         if (board) {
           setTitle(board.title)
           setStrokes(board.strokes)
+          setUndoStack(board.strokes.map((stroke, index) => ({ type: 'add', index, stroke })))
+          setRedoStack([])
+          setSelectedStrokeIndex(null)
         } else {
           // New board, save initial state
           const newTitle = generateBoardName()
           setTitle(newTitle)
+          setStrokes([])
+          setUndoStack([])
+          setRedoStack([])
+          setSelectedStrokeIndex(null)
           await saveBoard({
             id: boardId,
             title: newTitle,
@@ -148,7 +245,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     void save()
   }, [boardId, loadedBoardId, title, strokes])
 
-  const drawStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+  const drawStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke, offsetX = 0, offsetY = 0) => {
     if (stroke.points.length < 1) return
 
     ctx.beginPath()
@@ -157,14 +254,34 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     ctx.strokeStyle = stroke.tool === 'eraser' ? canvasColor : stroke.color
     ctx.lineWidth = stroke.size
 
-    ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+    ctx.moveTo(stroke.points[0].x + offsetX, stroke.points[0].y + offsetY)
     for (let i = 1; i < stroke.points.length; i++) {
-      ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
+      ctx.lineTo(stroke.points[i].x + offsetX, stroke.points[i].y + offsetY)
     }
     ctx.stroke()
   }, [canvasColor])
 
-  const renderCanvas = useCallback(() => {
+  const drawSelection = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke, offset: Point) => {
+    if (stroke.points.length < 1) return
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = SELECTION_COLOR
+    ctx.lineWidth = stroke.size + 6
+    ctx.globalAlpha = 0.7
+    ctx.moveTo(stroke.points[0].x + offset.x, stroke.points[0].y + offset.y)
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x + offset.x, stroke.points[i].y + offset.y)
+    }
+    ctx.stroke()
+    ctx.restore()
+
+    drawStroke(ctx, stroke, offset.x, offset.y)
+  }, [drawStroke])
+
+  const renderCanvas = useCallback((includeSelection = true) => {
     const canvas = canvasRef.current
     const container = containerRef.current
     if (!canvas || !container) return
@@ -190,13 +307,27 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     ctx.fillRect(0, 0, rect.width, rect.height)
 
     // Draw all saved strokes
-    strokes.forEach(stroke => drawStroke(ctx, stroke))
+    strokes.forEach((stroke, index) => {
+      if (index === selectedStrokeIndex && isDrawing && tool === 'cursor') {
+        drawStroke(ctx, stroke, dragOffset.x, dragOffset.y)
+      } else {
+        drawStroke(ctx, stroke)
+      }
+    })
 
     // Draw current stroke
     if (currentStroke) {
       drawStroke(ctx, currentStroke)
     }
-  }, [strokes, currentStroke, canvasColor, drawStroke])
+
+    if (includeSelection && selectedStrokeIndex !== null) {
+      const selectedStroke = strokes[selectedStrokeIndex]
+      if (selectedStroke) {
+        const offset = isDrawing && tool === 'cursor' ? dragOffset : { x: 0, y: 0 }
+        drawSelection(ctx, selectedStroke, offset)
+      }
+    }
+  }, [strokes, currentStroke, canvasColor, drawStroke, drawSelection, selectedStrokeIndex, isDrawing, tool, dragOffset])
 
   useEffect(() => {
     renderCanvas()
@@ -235,6 +366,30 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     const coords = getCoordinates(e)
     if (!coords) return
 
+    if (tool === 'cursor') {
+      const strokeIndex = hitTestStroke(strokes, coords)
+      setSelectedStrokeIndex(strokeIndex)
+      setCurrentStroke(null)
+
+      if (strokeIndex === null) {
+        setIsDrawing(false)
+        draggedStrokeIndexRef.current = null
+        dragStartRef.current = null
+        draggedStrokeRef.current = null
+        dragOffsetRef.current = { x: 0, y: 0 }
+        setDragOffset({ x: 0, y: 0 })
+        return
+      }
+
+      setIsDrawing(true)
+      draggedStrokeIndexRef.current = strokeIndex
+      dragStartRef.current = coords
+      draggedStrokeRef.current = strokes[strokeIndex]
+      dragOffsetRef.current = { x: 0, y: 0 }
+      setDragOffset({ x: 0, y: 0 })
+      return
+    }
+
     isStraightLineRef.current = 'shiftKey' in e && e.shiftKey
     setIsDrawing(true)
     setCurrentStroke({
@@ -247,10 +402,25 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
-    if (!isDrawing || !currentStroke) return
+    if (!isDrawing) return
 
     const coords = getCoordinates(e)
     if (!coords) return
+
+    if (tool === 'cursor') {
+      const dragStart = dragStartRef.current
+      if (!dragStart || draggedStrokeIndexRef.current === null) return
+
+      const nextOffset = {
+        x: coords.x - dragStart.x,
+        y: coords.y - dragStart.y
+      }
+      dragOffsetRef.current = nextOffset
+      setDragOffset(nextOffset)
+      return
+    }
+
+    if (!currentStroke) return
 
     setCurrentStroke(prev => {
       if (!prev) return null
@@ -278,34 +448,84 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   }
 
   const stopDrawing = () => {
-    if (!isDrawing || !currentStroke) return
+    if (!isDrawing) return
+
+    if (tool === 'cursor') {
+      const strokeIndex = draggedStrokeIndexRef.current
+      const originalStroke = draggedStrokeRef.current
+      const offset = dragOffsetRef.current
+      const hasMoved = offset.x !== 0 || offset.y !== 0
+
+      setIsDrawing(false)
+      dragStartRef.current = null
+      draggedStrokeIndexRef.current = null
+      draggedStrokeRef.current = null
+      dragOffsetRef.current = { x: 0, y: 0 }
+      setDragOffset({ x: 0, y: 0 })
+
+      if (strokeIndex !== null && originalStroke && hasMoved) {
+        const movedStroke = translateStroke(originalStroke, offset)
+        setStrokes(prev => prev.map((stroke, index) => index === strokeIndex ? movedStroke : stroke))
+        setUndoStack(prev => [...prev, {
+          type: 'move',
+          index: strokeIndex,
+          before: originalStroke,
+          after: movedStroke
+        }])
+        setRedoStack([])
+      }
+      return
+    }
+
+    if (!currentStroke) return
     
     setIsDrawing(false)
     isStraightLineRef.current = false
+    const strokeIndex = strokes.length
     setStrokes(prev => [...prev, currentStroke])
+    setUndoStack(prev => [...prev, { type: 'add', index: strokeIndex, stroke: currentStroke }])
     setCurrentStroke(null)
     setRedoStack([]) // Clear redo stack on new action
   }
 
   const undo = useCallback(() => {
-    if (strokes.length === 0) return
-    const newStrokes = [...strokes]
-    const poppedStroke = newStrokes.pop()
-    if (poppedStroke) {
-      setStrokes(newStrokes)
-      setRedoStack(prev => [...prev, poppedStroke])
-    }
-  }, [strokes])
+    const action = undoStack[undoStack.length - 1]
+    if (!action) return
+
+    setStrokes(previousStrokes => applyCanvasAction(previousStrokes, action, 'undo'))
+    setUndoStack(undoStack.slice(0, -1))
+    setRedoStack(previousRedoStack => [...previousRedoStack, action])
+    setSelectedStrokeIndex(null)
+  }, [undoStack])
 
   const redo = useCallback(() => {
-    if (redoStack.length === 0) return
-    const newRedoStack = [...redoStack]
-    const poppedStroke = newRedoStack.pop()
-    if (poppedStroke) {
-      setRedoStack(newRedoStack)
-      setStrokes(prev => [...prev, poppedStroke])
-    }
+    const action = redoStack[redoStack.length - 1]
+    if (!action) return
+
+    setStrokes(previousStrokes => applyCanvasAction(previousStrokes, action, 'redo'))
+    setRedoStack(redoStack.slice(0, -1))
+    setUndoStack(previousUndoStack => [...previousUndoStack, action])
+    setSelectedStrokeIndex(null)
   }, [redoStack])
+
+  const deleteSelectedStroke = useCallback(() => {
+    if (selectedStrokeIndex === null) return
+
+    const selectedStroke = strokes[selectedStrokeIndex]
+    if (!selectedStroke) {
+      setSelectedStrokeIndex(null)
+      return
+    }
+
+    setStrokes(prev => prev.filter((_, index) => index !== selectedStrokeIndex))
+    setUndoStack(prev => [...prev, {
+      type: 'delete',
+      index: selectedStrokeIndex,
+      stroke: selectedStroke
+    }])
+    setRedoStack([])
+    setSelectedStrokeIndex(null)
+  }, [selectedStrokeIndex, strokes])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -314,7 +534,15 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         || target?.tagName === 'INPUT'
         || target?.tagName === 'TEXTAREA'
 
-      if (!event.metaKey || event.key.toLowerCase() !== 'z' || isEditingText) return
+      if (isEditingText) return
+
+      if (selectedStrokeIndex !== null && (event.key === 'Delete' || event.key === 'Backspace')) {
+        event.preventDefault()
+        deleteSelectedStroke()
+        return
+      }
+
+      if (!event.metaKey || event.key.toLowerCase() !== 'z') return
 
       event.preventDefault()
       if (event.shiftKey) {
@@ -326,24 +554,32 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [redo, undo])
+  }, [deleteSelectedStroke, redo, selectedStrokeIndex, undo])
 
   const clearCanvas = () => {
     setStrokes([])
+    setUndoStack([])
     setRedoStack([])
+    setSelectedStrokeIndex(null)
   }
 
   const downloadCanvas = () => {
     const canvas = canvasRef.current
     if (!canvas) return
 
+    renderCanvas(false)
     const link = document.createElement('a')
     link.download = `${title.replace(/\s+/g, '_').toLowerCase()}.png`
     link.href = canvas.toDataURL()
     link.click()
+    renderCanvas()
   }
 
   const cursorStyle = useMemo(() => {
+    if (tool === 'cursor') {
+      return { cursor: isDrawing ? 'grabbing' : 'default' }
+    }
+
     const size = brushSize[0];
     const half = size / 2;
     const svg = `
@@ -354,7 +590,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     `;
     const encoded = encodeURIComponent(svg);
     return { cursor: `url("data:image/svg+xml,${encoded}") ${half + 1} ${half + 1}, auto` };
-  }, [brushSize]);
+  }, [brushSize, isDrawing, tool]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -403,35 +639,51 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           <div className="relative flex p-1 rounded-lg bg-muted/50">
             {/* Animated slider background */}
             <div
-              className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] bg-background rounded-md shadow-sm transition-transform duration-300 ease-out"
+              className="absolute left-1 top-1 bottom-1 bg-background rounded-md shadow-sm transition-transform duration-300 ease-out"
               style={{
-                transform: tool === 'pen' ? 'translateX(0.25rem)' : 'translateX(calc(100% + 0.25rem))'
+                width: 'calc(33.333333% - 0.333333rem)',
+                transform: tool === 'cursor'
+                  ? 'translateX(0)'
+                  : tool === 'pen'
+                    ? 'translateX(calc(100% + 0.25rem))'
+                    : 'translateX(calc(200% + 0.5rem))'
               }}
             />
-            <div className="grid grid-cols-2 w-full gap-1 relative z-10">
+            <div className="grid grid-cols-3 w-full gap-1 relative z-10">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setPenSize(brushSize[0])
-                    setTool('pen')
-                    setBrushSize([penSize])
-                  }}
-                  className={`bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'pen' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setTool('cursor')}
+                  aria-pressed={tool === 'cursor'}
+                  className={`px-1 text-xs bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'cursor' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
-                    <Pen className="h-4 w-4 mr-2" /> Pen
+                    <MousePointer2 className="h-4 w-4" /> Cursor
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setEraserSize(brushSize[0])
+                    setTool('pen')
+                    setBrushSize([penSize])
+                    setSelectedStrokeIndex(null)
+                  }}
+                  aria-pressed={tool === 'pen'}
+                  className={`px-1 text-xs bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'pen' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                    <Pen className="h-4 w-4" /> Pen
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
                     setTool('eraser')
                     setBrushSize([eraserSize])
+                    setSelectedStrokeIndex(null)
                   }}
-                  className={`bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'eraser' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  aria-pressed={tool === 'eraser'}
+                  className={`px-1 text-xs bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'eraser' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
-                    <Eraser className="h-4 w-4 mr-2" /> Eraser
+                    <Eraser className="h-4 w-4" /> Eraser
                 </Button>
             </div>
           </div>
@@ -458,7 +710,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
               setBrushSize(value)
               if (tool === 'pen') {
                 setPenSize(value[0])
-              } else {
+              } else if (tool === 'eraser') {
                 setEraserSize(value[0])
               }
             }}
@@ -475,7 +727,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         <div className="space-y-2">
             <h2 className="text-sm font-medium">History</h2>
             <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={undo} disabled={strokes.length === 0} className="shadow-none bg-transparent">
+                <Button variant="outline" onClick={undo} disabled={undoStack.length === 0} className="shadow-none bg-transparent">
                     <Undo className="h-4 w-4 mr-2" /> Undo
                 </Button>
                 <Button variant="outline" onClick={redo} disabled={redoStack.length === 0} className="shadow-none bg-transparent">
