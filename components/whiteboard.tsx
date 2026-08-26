@@ -12,6 +12,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/db'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
+import { getSmoothingFactor, usePenSmoothing } from '@/lib/drawing-settings'
 
 type Tool = 'pen' | 'eraser'
 
@@ -30,6 +31,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [color, setColor] = useState('#000000')
   const [title, setTitle] = useState('Untitled Board')
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle')
+  const penSmoothing = usePenSmoothing()
   
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [redoStack, setRedoStack] = useState<Stroke[]>([])
@@ -198,9 +200,9 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     setCurrentStroke(prev => {
       if (!prev) return null
       
-      // Apply 10% smoothing by interpolating with the last point
+      // Interpolate with the last point using the selected smoothing level.
       const lastPoint = prev.points[prev.points.length - 1]
-      const smoothingFactor = 0.15
+      const smoothingFactor = getSmoothingFactor(penSmoothing)
       const smoothedPoint = {
         x: lastPoint.x + (coords.x - lastPoint.x) * (1 - smoothingFactor),
         y: lastPoint.y + (coords.y - lastPoint.y) * (1 - smoothingFactor)

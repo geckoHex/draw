@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -351,8 +352,16 @@ export default function Home() {
 
       <div className="fixed inset-x-4 top-4 z-50 md:inset-x-8 md:top-6">
         <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-3xl border border-white/70 bg-white/80 p-3 shadow-lg shadow-slate-900/10 backdrop-blur-xl md:gap-6 md:px-5">
-          <div className="whitespace-nowrap text-sm font-bold tracking-tight text-gray-900 sm:text-lg">
-            GeckoHex/Draw
+          <div className="flex items-center gap-2 whitespace-nowrap text-sm font-bold tracking-tight text-gray-900 sm:text-lg">
+            <span>GeckoHex/Draw</span>
+            <Link
+              href="/settings"
+              aria-label="Settings"
+              title="Settings"
+              className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
           </div>
 
           <div className="flex justify-center">
