@@ -14,6 +14,7 @@ import { FolderPickerModal } from "@/components/folder-picker-modal";
 import {
   getRootBoardsPaginated,
   getFolderBoardCounts,
+  saveBoard,
   deleteBoard,
   renameBoard,
   getAllFolders,
@@ -24,6 +25,7 @@ import {
   type Board,
   type Folder
 } from "@/lib/db";
+import { generateBoardName } from "@/lib/name-generator";
 import { BoardPreview } from "@/components/board-preview";
 import { FolderCard } from "@/components/folder-card";
 import { FolderModal } from "@/components/folder-modal";
@@ -218,9 +220,23 @@ export default function Home() {
     };
   }, [hasMore, isLoading, loadMoreBoards]);
 
-  const createNewBoard = () => {
+  const createNewBoard = async () => {
     const id = crypto.randomUUID();
-    router.push(`/board/${id}`);
+    const timestamp = Date.now();
+
+    try {
+      await saveBoard({
+        id,
+        title: generateBoardName(),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        strokes: [],
+        folderId: selectedFolderId,
+      });
+      router.push(`/board/${id}`);
+    } catch (error) {
+      console.error('Failed to create board:', error);
+    }
   };
 
   const handleRenameBoard = async (newTitle: string) => {
@@ -414,6 +430,7 @@ export default function Home() {
           <div className="flex gap-2">
             <Button
               onClick={() => setShowFolderModal(true)}
+              disabled={selectedFolderId !== null}
               variant="outline"
               size="icon"
               aria-label="New folder"
