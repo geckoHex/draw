@@ -60,7 +60,7 @@ export function AccountEditorModal({ account, onClose, onSaved }: AccountEditorM
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 px-5 py-8 backdrop-blur-sm animate-in fade-in duration-200"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -69,24 +69,24 @@ export function AccountEditorModal({ account, onClose, onSaved }: AccountEditorM
         role="dialog"
         aria-modal="true"
         aria-labelledby="account-editor-title"
-        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-8 text-card-foreground shadow-2xl animate-in zoom-in-95 duration-200"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close account editor"
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="absolute right-5 top-5 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
 
-        <h2 id="account-editor-title" className="pr-8 text-xl font-semibold text-foreground">
+        <h2 id="account-editor-title" className="pr-10 text-2xl font-semibold tracking-tight text-foreground">
           {isEditing ? "Edit account" : "Create account"}
         </h2>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div className="space-y-2">
-            <label htmlFor="admin-username" className="text-sm font-semibold text-foreground">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-2.5">
+            <label htmlFor="admin-username" className="block text-sm font-semibold text-foreground">
               Username
             </label>
             <Input
@@ -102,11 +102,12 @@ export function AccountEditorModal({ account, onClose, onSaved }: AccountEditorM
               spellCheck={false}
               maxLength={80}
               autoFocus={!account?.isRoot}
+              className="h-12 rounded-xl px-4 text-base shadow-xs"
             />
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="admin-password" className="text-sm font-semibold text-foreground">
+          <div className="space-y-2.5">
+            <label htmlFor="admin-password" className="block text-sm font-semibold text-foreground">
               {isEditing ? "New password" : "Password"}
             </label>
             <Input
@@ -120,6 +121,7 @@ export function AccountEditorModal({ account, onClose, onSaved }: AccountEditorM
               autoComplete="new-password"
               maxLength={1024}
               autoFocus={Boolean(account?.isRoot)}
+              className="h-12 rounded-xl px-4 text-base shadow-xs"
             />
             {isEditing && (
               <p className="text-xs text-muted-foreground">Leave blank to keep the current password.</p>
@@ -128,11 +130,11 @@ export function AccountEditorModal({ account, onClose, onSaved }: AccountEditorM
 
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
-          <div className="flex gap-3 pt-1">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="h-11 flex-1 rounded-xl shadow-none">
               Cancel
             </Button>
-            <Button type="submit" disabled={isSaving || !hasChanges} className="flex-1">
+            <Button type="submit" disabled={isSaving || !hasChanges} className="h-11 flex-1 rounded-xl">
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEditing ? "Save" : "Create"}
             </Button>

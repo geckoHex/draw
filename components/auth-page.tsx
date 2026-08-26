@@ -54,9 +54,9 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
   const signUpDisabled = mode === "sign-up" && availability !== "available"
 
   return (
-    <main className="app-background flex min-h-screen items-center justify-center px-6 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-10 flex items-center justify-center gap-3">
+    <main className="app-background flex min-h-screen items-center justify-center px-5 py-12 sm:px-8">
+      <div className="w-full max-w-md">
+        <div className="mb-12 flex items-center justify-center gap-3.5">
           <Image
             src="/images/Gecko.png"
             alt="Gecko Draw"
@@ -68,7 +68,7 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
           <span className="text-2xl font-bold tracking-tight text-foreground">Gecko Draw</span>
         </div>
 
-        <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-foreground">
+        <h1 className="mb-10 text-center text-3xl font-bold tracking-tight text-foreground">
           {returning
             ? `Welcome back, ${returning.username}`
             : mode === "sign-up"
@@ -76,10 +76,10 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
               : "Sign in"}
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {!returning && (
-            <div className="space-y-2">
-              <label htmlFor="auth-username" className="text-sm font-semibold text-foreground">
+            <div className="space-y-2.5">
+              <label htmlFor="auth-username" className="block text-sm font-semibold text-foreground">
                 Username
               </label>
               <Input
@@ -95,28 +95,32 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
                 spellCheck={false}
                 maxLength={80}
                 autoFocus
-                className="h-12 rounded-xl bg-background"
+                className="h-14 rounded-2xl bg-background px-4 text-base shadow-xs"
               />
-              {mode === "sign-up" && username.trim() && (
-                <p
-                  aria-live="polite"
-                  className={availability === "available"
-                    ? "text-xs text-emerald-600 dark:text-emerald-400"
-                    : availability === "taken" || availability === "error"
-                      ? "text-xs text-destructive"
-                      : "text-xs text-muted-foreground"}
-                >
-                  {availability === "checking" && "Checking username…"}
-                  {availability === "available" && "Username is available."}
-                  {availability === "taken" && "Username is already taken."}
-                  {availability === "error" && "Could not check this username."}
-                </p>
+              {mode === "sign-up" && (
+                <div className="min-h-4">
+                  {username.trim() && (
+                    <p
+                      aria-live="polite"
+                      className={availability === "available"
+                        ? "text-xs text-emerald-600 dark:text-emerald-400"
+                        : availability === "taken" || availability === "error"
+                          ? "text-xs text-destructive"
+                          : "text-xs text-muted-foreground"}
+                    >
+                      {availability === "checking" && "Checking username…"}
+                      {availability === "available" && "Username is available."}
+                      {availability === "taken" && "Username is already taken."}
+                      {availability === "error" && "Could not check this username."}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
 
-          <div className="space-y-2">
-            <label htmlFor="auth-password" className="text-sm font-semibold text-foreground">
+          <div className="space-y-2.5">
+            <label htmlFor="auth-password" className="block text-sm font-semibold text-foreground">
               Password
             </label>
             <Input
@@ -131,7 +135,7 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
               autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
               maxLength={1024}
               autoFocus={Boolean(returning)}
-              className="h-12 rounded-xl bg-background"
+              className="h-14 rounded-2xl bg-background px-4 text-base shadow-xs"
             />
           </div>
 
@@ -140,14 +144,14 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
           <Button
             type="submit"
             disabled={isSubmitting || signUpDisabled}
-            className="h-12 w-full rounded-xl"
+            className="h-14 w-full rounded-2xl text-base"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {mode === "sign-up" ? "Create account" : "Sign in"}
           </Button>
         </form>
 
-        <div className="mt-8 text-center">
+        <div className="mt-9 text-center">
           {returning ? (
             <button
               type="button"
@@ -156,7 +160,7 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
                 setPassword("")
                 setError("")
               }}
-              className="text-sm font-semibold text-muted-foreground hover:text-foreground"
+              className="inline-flex h-11 items-center px-3 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Switch account
             </button>
@@ -164,7 +168,7 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
             <button
               type="button"
               onClick={() => switchMode("sign-up")}
-              className="text-sm font-semibold text-muted-foreground hover:text-foreground"
+              className="inline-flex h-11 items-center px-3 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Sign up instead
             </button>
@@ -172,7 +176,7 @@ export function AuthPage({ returningAccount, onAuthenticated }: AuthPageProps) {
             <button
               type="button"
               onClick={() => switchMode("sign-in")}
-              className="text-sm font-semibold text-muted-foreground hover:text-foreground"
+              className="inline-flex h-11 items-center px-3 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Sign in instead
             </button>
