@@ -38,6 +38,7 @@ When making changes you may test your changes with `npm run build`. You may also
 **Never start or modify my dev server on port 3000.**
 Do not make git commits.
 
-After you finish making changes edit `public/version.txt`. Update the version number according to semantic version numbering (`major.minor.patch`). Preserve the file format: 1 line only that says `Version x.x.x`. A major release is multiple feature/ ux/ ui overhauls. A minor release is a feature addition, a big ui change, or medium functionality change. A patch release is a small tweak, change, etc.
+After you finish making changes edit `public/version.json`. 
+Bump the version number. Use semantic versioning (major.minor.patch). Keep the file to one line: `Version x.x.x`. Major = multiple feature/UX/UI overhauls; minor = new feature, major UI change, or medium functionality change; patch = small tweak or fix.
+For the commit message, write a one line suggested commit message based on the code you implemented.
 
-Finally, give me a suggested one line commit message.
