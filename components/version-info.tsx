@@ -39,6 +39,12 @@ export function VersionInfo() {
 
   if (!versionInfo) return null
 
+  const copyCommitMessage = () => {
+    navigator.clipboard.writeText(versionInfo.commit_message).catch((error) => {
+      console.error("Failed to copy commit message:", error)
+    })
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -68,8 +74,15 @@ export function VersionInfo() {
             <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
               Commit
             </dt>
-            <dd className="mt-1 text-sm leading-relaxed text-foreground">
-              {versionInfo.commit_message}
+            <dd>
+              <button
+                type="button"
+                aria-label="Copy commit message"
+                onClick={copyCommitMessage}
+                className="mt-1 block w-full text-left text-sm leading-relaxed text-foreground"
+              >
+                {versionInfo.commit_message}
+              </button>
             </dd>
           </div>
           <div>

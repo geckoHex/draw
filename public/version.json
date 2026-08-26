@@ -1,5 +1,5 @@
 {
-    "version": "1.0.3",
-    "commit_message": "Show release details from version metadata in the navbar.",
+    "version": "1.0.4",
+    "commit_message": "Copy release notes from the version popup.",
     "authored_by": "Codex"
 }
