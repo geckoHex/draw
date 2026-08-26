@@ -13,6 +13,7 @@ GeckoDraw is an online webapp being build using Next.js providing a complete, po
 ### Colors & Theme
 
 Follow the existing theme when designing new UI.
+Remember to implement light and dark mode versions of UI that respond to the setting.
 
 ### Design Notes
 - Elements should not change size or position when hovered or interacted with.
