@@ -17,6 +17,31 @@ import { useDarkCanvas } from '@/lib/interface-settings'
 
 const LIGHT_CANVAS_COLOR = '#ffffff'
 const DARK_CANVAS_COLOR = '#111318'
+const CARDINAL_SNAP_THRESHOLD = 5 * Math.PI / 180
+
+function snapToCardinalAngle(start: Point, end: Point): Point {
+  const deltaX = end.x - start.x
+  const deltaY = end.y - start.y
+  const distance = Math.hypot(deltaX, deltaY)
+  const angle = Math.atan2(deltaY, deltaX)
+  const quarterTurn = Math.round(angle / (Math.PI / 2))
+  const snappedAngle = quarterTurn * (Math.PI / 2)
+
+  if (Math.abs(angle - snappedAngle) > CARDINAL_SNAP_THRESHOLD) {
+    return end
+  }
+
+  switch ((quarterTurn % 4 + 4) % 4) {
+    case 0:
+      return { x: start.x + distance, y: start.y }
+    case 1:
+      return { x: start.x, y: start.y + distance }
+    case 2:
+      return { x: start.x - distance, y: start.y }
+    default:
+      return { x: start.x, y: start.y - distance }
+  }
+}
 
 type Tool = 'pen' | 'eraser'
 
@@ -233,7 +258,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       if (isStraightLineRef.current) {
         return {
           ...prev,
-          points: [prev.points[0], coords]
+          points: [prev.points[0], snapToCardinalAngle(prev.points[0], coords)]
         }
       }
       
