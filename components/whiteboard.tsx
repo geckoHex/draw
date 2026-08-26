@@ -12,7 +12,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/db'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
-import { getSmoothingFactor, usePenSmoothing } from '@/lib/drawing-settings'
+import { getSmoothingFactor, usePenSmoothing, useShowSaveStatus } from '@/lib/drawing-settings'
 
 type Tool = 'pen' | 'eraser'
 
@@ -34,6 +34,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
   const [loadedBoardId, setLoadedBoardId] = useState<string | null>(null)
   const penSmoothing = usePenSmoothing()
+  const showSaveStatus = useShowSaveStatus()
   
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [redoStack, setRedoStack] = useState<Stroke[]>([])
@@ -444,19 +445,21 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           </div>
         </div>
         
-        <div className="mt-auto flex h-6 items-center justify-center text-xs text-muted-foreground">
-          {saveStatus === 'saving' ? (
-            <>
-              <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              <Check className="h-3 w-3 mr-2" />
-              <span>Saved</span>
-            </>
-          )}
-        </div>
+        {showSaveStatus && (
+          <div className="mt-auto flex h-6 items-center justify-center text-xs text-muted-foreground">
+            {saveStatus === 'saving' ? (
+              <>
+                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Check className="h-3 w-3 mr-2" />
+                <span>Saved</span>
+              </>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Clear Board Confirmation Modal */}

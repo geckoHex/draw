@@ -3,9 +3,12 @@
 import { useSyncExternalStore } from "react"
 
 export const DEFAULT_PEN_SMOOTHING = 5
+export const DEFAULT_SHOW_SAVE_STATUS = false
 
 const PEN_SMOOTHING_KEY = "draw.pen-smoothing"
 const PEN_SMOOTHING_EVENT = "draw:pen-smoothing-change"
+const SHOW_SAVE_STATUS_KEY = "draw.show-save-status"
+const SHOW_SAVE_STATUS_EVENT = "draw:show-save-status-change"
 
 function normalizePenSmoothing(value: number) {
   return Math.min(10, Math.max(1, Math.round(value)))
@@ -41,6 +44,35 @@ export function usePenSmoothing() {
     subscribeToPenSmoothing,
     getPenSmoothing,
     () => DEFAULT_PEN_SMOOTHING
+  )
+}
+
+export function getShowSaveStatus() {
+  if (typeof window === "undefined") return DEFAULT_SHOW_SAVE_STATUS
+
+  return window.localStorage.getItem(SHOW_SAVE_STATUS_KEY) === "true"
+}
+
+export function setShowSaveStatus(value: boolean) {
+  window.localStorage.setItem(SHOW_SAVE_STATUS_KEY, String(value))
+  window.dispatchEvent(new Event(SHOW_SAVE_STATUS_EVENT))
+}
+
+function subscribeToShowSaveStatus(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange)
+  window.addEventListener(SHOW_SAVE_STATUS_EVENT, onStoreChange)
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange)
+    window.removeEventListener(SHOW_SAVE_STATUS_EVENT, onStoreChange)
+  }
+}
+
+export function useShowSaveStatus() {
+  return useSyncExternalStore(
+    subscribeToShowSaveStatus,
+    getShowSaveStatus,
+    () => DEFAULT_SHOW_SAVE_STATUS
   )
 }
 
