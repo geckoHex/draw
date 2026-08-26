@@ -2,75 +2,83 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+
+export interface ContextMenuPoint {
+  x: number
+  y: number
+}
 
 interface DropdownMenuProps {
   trigger: React.ReactNode
   children: React.ReactNode
   align?: "start" | "end"
+  contextMenuPoint?: ContextMenuPoint | null
+  onContextMenuClose?: () => void
 }
 
-export function DropdownMenu({ trigger, children, align = "end" }: DropdownMenuProps) {
+const DropdownMenuContext = React.createContext<(() => void) | null>(null)
+
+export function DropdownMenu({
+  trigger,
+  children,
+  align = "start",
+  contextMenuPoint = null,
+  onContextMenuClose,
+}: DropdownMenuProps) {
   const [isOpen, setIsOpen] = React.useState(false)
-  const menuRef = React.useRef<HTMLDivElement>(null)
+  const virtualAnchorRef = React.useMemo(
+    () => ({
+      current: contextMenuPoint
+        ? {
+            getBoundingClientRect: () =>
+              new DOMRect(contextMenuPoint.x, contextMenuPoint.y, 0, 0),
+          }
+        : null,
+    }),
+    [contextMenuPoint]
+  )
 
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false)
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside)
-      document.addEventListener("keydown", handleEscape)
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-      document.removeEventListener("keydown", handleEscape)
-    }
-  }, [isOpen])
+  const closeMenu = React.useCallback(() => {
+    setIsOpen(false)
+    onContextMenuClose?.()
+  }, [onContextMenuClose])
 
   return (
-    <div className="relative" ref={menuRef}>
-      <div onClick={(e) => {
-        e.stopPropagation()
-        setIsOpen(!isOpen)
-      }}>
+    <Popover
+      open={contextMenuPoint !== null || isOpen}
+      onOpenChange={(open) => {
+        if (open) {
+          setIsOpen(true)
+        } else {
+          closeMenu()
+        }
+      }}
+    >
+      {contextMenuPoint && <PopoverAnchor virtualRef={virtualAnchorRef} />}
+      <PopoverTrigger asChild>
         {trigger}
-      </div>
-      {isOpen && (
-        <div
-          className={cn(
-            "absolute top-full mt-2 w-48 rounded-xl bg-white shadow-lg border border-gray-200 py-1 z-50 animate-in fade-in-0 zoom-in-95",
-            align === "end" ? "right-0" : "left-0"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {React.Children.map(children, (child) => {
-            if (React.isValidElement(child)) {
-              return React.cloneElement(child as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>, {
-                onClick: (e: React.MouseEvent) => {
-                  e.stopPropagation()
-                  const childProps = child.props as { onClick?: (e: React.MouseEvent) => void }
-                  if (childProps.onClick) {
-                    childProps.onClick(e)
-                  }
-                  setIsOpen(false)
-                }
-              })
-            }
-            return child
-          })}
-        </div>
-      )}
-    </div>
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align={align}
+        sideOffset={8}
+        collisionPadding={8}
+        className="w-48 rounded-xl p-2"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <DropdownMenuContext.Provider value={closeMenu}>
+          <div className="flex flex-col gap-1">
+            {children}
+          </div>
+        </DropdownMenuContext.Provider>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -87,14 +95,21 @@ export function DropdownMenuItem({
   variant = "default",
   icon 
 }: DropdownMenuItemProps) {
+  const closeMenu = React.useContext(DropdownMenuContext)
+
   return (
     <button
-      onClick={onClick}
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick?.(event)
+        closeMenu?.()
+      }}
       className={cn(
-        "w-full px-4 py-2.5 text-left text-sm font-medium transition-colors flex items-center gap-3",
+        "flex h-8 w-full items-center justify-start gap-1.5 rounded-md px-3 text-left text-sm font-medium transition-colors",
         variant === "destructive"
-          ? "text-red-600 hover:bg-red-50"
-          : "text-gray-700 hover:bg-gray-50"
+          ? "text-red-600 hover:bg-red-50 hover:text-red-700"
+          : "text-gray-700 hover:bg-gray-100"
       )}
     >
       {icon && <span className="shrink-0">{icon}</span>}

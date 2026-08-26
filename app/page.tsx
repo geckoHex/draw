@@ -8,7 +8,7 @@ import { ArrowLeft, Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuItem, type ContextMenuPoint } from "@/components/ui/dropdown-menu";
 import { RenameBoardModal } from "@/components/rename-board-modal";
 import { FolderPickerModal } from "@/components/folder-picker-modal";
 import {
@@ -43,6 +43,7 @@ export default function Home() {
   const [boardToDelete, setBoardToDelete] = useState<{ id: string; title: string } | null>(null);
   const [boardToRename, setBoardToRename] = useState<{ id: string; title: string } | null>(null);
   const [boardToMove, setBoardToMove] = useState<{ id: string; folderId: string | null } | null>(null);
+  const [boardContextMenu, setBoardContextMenu] = useState<{ id: string; point: ContextMenuPoint } | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -512,6 +513,14 @@ export default function Home() {
                     onDragStart={(e) => handleDragStart(e, board.id)}
                     className="group relative flex h-[260px] w-full cursor-pointer flex-col rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-gray-300 hover:shadow-md"
                     onClick={() => router.push(`/board/${board.id}`)}
+                    onContextMenu={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setBoardContextMenu({
+                        id: board.id,
+                        point: { x: event.clientX, y: event.clientY },
+                      })
+                    }}
                   >
                     {/* Card Header */}
                     <div className="mb-3 flex items-start gap-3">
@@ -540,6 +549,8 @@ export default function Home() {
                         </div>
                       </div>
                       <DropdownMenu
+                        contextMenuPoint={boardContextMenu?.id === board.id ? boardContextMenu.point : null}
+                        onContextMenuClose={() => setBoardContextMenu(null)}
                         trigger={
                           <Button
                             variant="ghost"
@@ -547,6 +558,7 @@ export default function Home() {
                             aria-label={`Board options for ${board.title || "Untitled Board"}`}
                             title="Board options"
                             className="-mr-1 h-8 w-8 shrink-0 rounded-lg text-gray-400 opacity-100 hover:bg-gray-100 hover:text-gray-700 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                            onClick={(event) => event.stopPropagation()}
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>

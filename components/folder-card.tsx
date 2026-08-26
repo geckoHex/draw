@@ -4,10 +4,10 @@ import { Folder, MoreVertical, Trash2, Edit2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  DropdownMenu,
+  DropdownMenuItem,
+  type ContextMenuPoint,
+} from "@/components/ui/dropdown-menu"
 
 interface FolderCardProps {
   id: string
@@ -32,7 +32,7 @@ export function FolderCard({
   onDragOver,
   onDrop,
 }: FolderCardProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [contextMenuPoint, setContextMenuPoint] = useState<ContextMenuPoint | null>(null)
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -50,6 +50,11 @@ export function FolderCard({
     <div
       className="group relative flex items-center gap-3 p-4 w-full rounded-2xl bg-white border border-gray-200 hover:border-gray-300 shadow-sm transition-all duration-200 cursor-pointer"
       onClick={onClick}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        setContextMenuPoint({ x: event.clientX, y: event.clientY })
+      }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       data-folder-id={id}
@@ -73,51 +78,33 @@ export function FolderCard({
       </div>
       
       {/* Menu */}
-      <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-        <PopoverTrigger asChild>
+      <DropdownMenu
+        contextMenuPoint={contextMenuPoint}
+        onContextMenuClose={() => setContextMenuPoint(null)}
+        trigger={
           <Button
             variant="ghost"
             size="icon"
             className="h-9 w-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsMenuOpen(!isMenuOpen)
-            }}
+            aria-label={`Folder options for ${name}`}
+            title="Folder options"
+            onClick={(event) => event.stopPropagation()}
           >
             <MoreVertical className="h-4 w-4" />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-48 p-2" align="end">
-          <div className="flex flex-col gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="justify-start"
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsMenuOpen(false)
-                onRename()
-              }}
-            >
-              <Edit2 className="h-4 w-4 mr-2" />
-              Rename
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsMenuOpen(false)
-                onDelete()
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+        }
+      >
+        <DropdownMenuItem icon={<Edit2 className="h-4 w-4" />} onClick={onRename}>
+          Rename
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          icon={<Trash2 className="h-4 w-4" />}
+          variant="destructive"
+          onClick={onDelete}
+        >
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenu>
     </div>
   )
 }
