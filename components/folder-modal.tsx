@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
@@ -35,19 +35,6 @@ export function FolderModal({
 }: FolderModalProps) {
   const [name, setName] = useState(initialName)
   const [color, setColor] = useState(initialColor)
-
-  // Reset state when modal opens
-  const handleOpen = () => {
-    setName(initialName)
-    setColor(initialColor)
-  }
-
-  useEffect(() => {
-    if (isOpen) {
-      handleOpen()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen])
 
   const handleSave = () => {
     if (name.trim()) {

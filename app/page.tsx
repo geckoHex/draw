@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,6 @@ const BOARDS_PER_PAGE = 20;
 export default function Home() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [filteredBoards, setFilteredBoards] = useState<Board[]>([]);
-  const [filteredFolders, setFilteredFolders] = useState<Folder[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [boardToDelete, setBoardToDelete] = useState<{ id: string; title: string } | null>(null);
@@ -83,11 +81,9 @@ export default function Home() {
   }, [now]);
 
   // Filter boards and folders based on search query
-  useEffect(() => {
+  const { filteredBoards, filteredFolders } = useMemo(() => {
     if (!searchQuery.trim()) {
-      setFilteredBoards(boards);
-      setFilteredFolders(folders);
-      return;
+      return { filteredBoards: boards, filteredFolders: folders };
     }
 
     const query = searchQuery.toLowerCase();
@@ -117,9 +113,11 @@ export default function Home() {
       folder.name.toLowerCase().includes(query)
     );
     
-    setFilteredBoards(filteredBoardsList);
-    setFilteredFolders(filteredFoldersList);
-  }, [searchQuery, boards, folders, now, timeAgo]);
+    return {
+      filteredBoards: filteredBoardsList,
+      filteredFolders: filteredFoldersList,
+    };
+  }, [searchQuery, boards, folders, timeAgo]);
 
   const loadFolders = useCallback(async () => {
     try {
@@ -626,21 +624,25 @@ export default function Home() {
         variant="destructive"
       />
 
-      <FolderModal
-        isOpen={showFolderModal}
-        onClose={() => setShowFolderModal(false)}
-        onSave={handleCreateFolder}
-        title="Create New Folder"
-      />
+      {showFolderModal && (
+        <FolderModal
+          isOpen
+          onClose={() => setShowFolderModal(false)}
+          onSave={handleCreateFolder}
+          title="Create New Folder"
+        />
+      )}
 
-      <FolderModal
-        isOpen={editingFolder !== null}
-        onClose={() => setEditingFolder(null)}
-        onSave={handleEditFolder}
-        initialName={editingFolder?.name}
-        initialColor={editingFolder?.color}
-        title="Edit Folder"
-      />
+      {editingFolder && (
+        <FolderModal
+          isOpen
+          onClose={() => setEditingFolder(null)}
+          onSave={handleEditFolder}
+          initialName={editingFolder.name}
+          initialColor={editingFolder.color}
+          title="Edit Folder"
+        />
+      )}
 
       <RenameBoardModal
         isOpen={boardToRename !== null}
