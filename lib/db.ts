@@ -57,6 +57,8 @@ export interface ExportedDatabase {
   stores: ExportedDatabaseStore[];
 }
 
+export type ImportedDatabaseStore = Pick<ExportedDatabaseStore, "name" | "records">;
+
 const DB_NAME = "GeckoDrawDB";
 const DB_VERSION = 1;
 const BOARD_STORE_NAME = "boards";
@@ -333,6 +335,43 @@ export async function exportDatabase(): Promise<ExportedDatabase> {
     exportedAt: new Date().toISOString(),
     stores,
   };
+}
+
+export async function replaceDatabase(stores: ImportedDatabaseStore[]): Promise<void> {
+  const database = await initDB();
+  const currentStoreNames = Array.from(database.objectStoreNames);
+  const unknownStore = stores.find((store) => !currentStoreNames.includes(store.name));
+
+  if (unknownStore) {
+    throw new Error(`The import contains an unsupported data store: ${unknownStore.name}`);
+  }
+
+  const transaction = database.transaction(currentStoreNames, "readwrite");
+  const completion = transactionComplete(transaction);
+
+  try {
+    for (const storeName of currentStoreNames) {
+      transaction.objectStore(storeName).clear();
+    }
+
+    for (const importedStore of stores) {
+      const store = transaction.objectStore(importedStore.name);
+
+      for (const record of importedStore.records) {
+        if (store.keyPath === null) {
+          store.put(record.value, record.key);
+        } else {
+          store.put(record.value);
+        }
+      }
+    }
+  } catch (error) {
+    transaction.abort();
+    await completion.catch(() => undefined);
+    throw error;
+  }
+
+  await completion;
 }
 
 export async function getSettingValue<T>(key: string): Promise<T | undefined> {

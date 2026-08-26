@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { ExportDataModal } from "@/components/export-data-modal"
+import { ImportDataModal } from "@/components/import-data-modal"
 import { Button } from "@/components/ui/button"
 import { SettingToggle } from "@/components/ui/setting-toggle"
 import { Slider } from "@/components/ui/slider"
@@ -28,6 +29,7 @@ type SettingsTab = "drawing" | "interface" | "data"
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("drawing")
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const penSmoothing = usePenSmoothing()
   const showSaveStatus = useShowSaveStatus()
   const theme = useThemePreference()
@@ -148,12 +150,27 @@ export default function SettingsPage() {
                 Export data
               </Button>
             </div>
+
+            <div className="mt-8 flex items-center justify-between gap-6">
+              <h2 className="text-sm font-semibold text-foreground">Import data</h2>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsImportModalOpen(true)}
+                className="h-11 rounded-xl bg-card/70 px-4 shadow-none"
+              >
+                Import data
+              </Button>
+            </div>
           </section>
         )}
       </div>
 
       {isExportModalOpen && (
         <ExportDataModal onClose={() => setIsExportModalOpen(false)} />
+      )}
+      {isImportModalOpen && (
+        <ImportDataModal onClose={() => setIsImportModalOpen(false)} />
       )}
     </main>
   )
