@@ -7,6 +7,7 @@
     "build": "next build --webpack && serwist build serwist.config.mjs",
     "start": "next start",
     "setup": "node scripts/setup-database.mjs",
+    "reset": "bash reset.sh",
     "serve:production": "bash run.sh",
     "lint": "eslint"
   },

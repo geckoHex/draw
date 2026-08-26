@@ -1,5 +1,5 @@
 {
-    "version": "3.1.0",
-    "commit_message": "Add configurable LAN server access",
+    "version": "3.1.1",
+    "commit_message": "Add full data reset script",
     "authored_by": "Codex"
 }
