@@ -75,7 +75,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(() => { try { const preference = localStorage.getItem("draw.theme") || "system"; const dark = preference === "dark" || (preference === "system" && matchMedia("(prefers-color-scheme: dark)").matches); const root = document.documentElement; root.classList.toggle("dark", dark); root.dataset.theme = dark ? "dark" : "light"; root.style.colorScheme = dark ? "dark" : "light"; } catch {} })();`,
+            __html: `(() => { const dark = matchMedia("(prefers-color-scheme: dark)").matches; const root = document.documentElement; root.classList.toggle("dark", dark); root.dataset.theme = dark ? "dark" : "light"; root.style.colorScheme = dark ? "dark" : "light"; })();`,
           }}
         />
       </head>

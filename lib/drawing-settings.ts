@@ -1,77 +1,55 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
+import { createIndexedDBSetting } from "@/lib/indexeddb-setting"
 
 export const DEFAULT_PEN_SMOOTHING = 5
 export const DEFAULT_SHOW_SAVE_STATUS = false
 
-const PEN_SMOOTHING_KEY = "draw.pen-smoothing"
-const PEN_SMOOTHING_EVENT = "draw:pen-smoothing-change"
-const SHOW_SAVE_STATUS_KEY = "draw.show-save-status"
-const SHOW_SAVE_STATUS_EVENT = "draw:show-save-status-change"
+const penSmoothingSetting = createIndexedDBSetting<number>(
+  "draw.pen-smoothing",
+  DEFAULT_PEN_SMOOTHING,
+  (value): value is number => Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 10
+)
+
+const showSaveStatusSetting = createIndexedDBSetting<boolean>(
+  "draw.show-save-status",
+  DEFAULT_SHOW_SAVE_STATUS,
+  (value): value is boolean => typeof value === "boolean"
+)
 
 function normalizePenSmoothing(value: number) {
   return Math.min(10, Math.max(1, Math.round(value)))
 }
 
 export function getPenSmoothing() {
-  if (typeof window === "undefined") return DEFAULT_PEN_SMOOTHING
-
-  const storedValue = Number(window.localStorage.getItem(PEN_SMOOTHING_KEY))
-  return Number.isFinite(storedValue)
-    ? normalizePenSmoothing(storedValue)
-    : DEFAULT_PEN_SMOOTHING
+  return penSmoothingSetting.getSnapshot()
 }
 
 export function setPenSmoothing(value: number) {
-  const normalizedValue = normalizePenSmoothing(value)
-  window.localStorage.setItem(PEN_SMOOTHING_KEY, String(normalizedValue))
-  window.dispatchEvent(new Event(PEN_SMOOTHING_EVENT))
-}
-
-function subscribeToPenSmoothing(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange)
-  window.addEventListener(PEN_SMOOTHING_EVENT, onStoreChange)
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange)
-    window.removeEventListener(PEN_SMOOTHING_EVENT, onStoreChange)
-  }
+  return penSmoothingSetting.set(normalizePenSmoothing(value))
 }
 
 export function usePenSmoothing() {
   return useSyncExternalStore(
-    subscribeToPenSmoothing,
-    getPenSmoothing,
+    penSmoothingSetting.subscribe,
+    penSmoothingSetting.getSnapshot,
     () => DEFAULT_PEN_SMOOTHING
   )
 }
 
 export function getShowSaveStatus() {
-  if (typeof window === "undefined") return DEFAULT_SHOW_SAVE_STATUS
-
-  return window.localStorage.getItem(SHOW_SAVE_STATUS_KEY) === "true"
+  return showSaveStatusSetting.getSnapshot()
 }
 
 export function setShowSaveStatus(value: boolean) {
-  window.localStorage.setItem(SHOW_SAVE_STATUS_KEY, String(value))
-  window.dispatchEvent(new Event(SHOW_SAVE_STATUS_EVENT))
-}
-
-function subscribeToShowSaveStatus(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange)
-  window.addEventListener(SHOW_SAVE_STATUS_EVENT, onStoreChange)
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange)
-    window.removeEventListener(SHOW_SAVE_STATUS_EVENT, onStoreChange)
-  }
+  return showSaveStatusSetting.set(value)
 }
 
 export function useShowSaveStatus() {
   return useSyncExternalStore(
-    subscribeToShowSaveStatus,
-    getShowSaveStatus,
+    showSaveStatusSetting.subscribe,
+    showSaveStatusSetting.getSnapshot,
     () => DEFAULT_SHOW_SAVE_STATUS
   )
 }

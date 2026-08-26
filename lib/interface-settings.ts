@@ -1,6 +1,7 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
+import { createIndexedDBSetting } from "@/lib/indexeddb-setting"
 
 export type ThemePreference = "system" | "light" | "dark"
 export type ResolvedTheme = "light" | "dark"
@@ -8,22 +9,26 @@ export type ResolvedTheme = "light" | "dark"
 export const DEFAULT_THEME: ThemePreference = "system"
 export const DEFAULT_DARK_CANVAS = false
 
-export const THEME_KEY = "draw.theme"
-export const DARK_CANVAS_KEY = "draw.dark-canvas"
-
-const THEME_EVENT = "draw:theme-change"
-const DARK_CANVAS_EVENT = "draw:dark-canvas-change"
 const DARK_MODE_QUERY = "(prefers-color-scheme: dark)"
 
-function isThemePreference(value: string | null): value is ThemePreference {
+function isThemePreference(value: unknown): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark"
 }
 
-export function getThemePreference(): ThemePreference {
-  if (typeof window === "undefined") return DEFAULT_THEME
+const themeSetting = createIndexedDBSetting<ThemePreference>(
+  "draw.theme",
+  DEFAULT_THEME,
+  isThemePreference
+)
 
-  const storedTheme = window.localStorage.getItem(THEME_KEY)
-  return isThemePreference(storedTheme) ? storedTheme : DEFAULT_THEME
+const darkCanvasSetting = createIndexedDBSetting<boolean>(
+  "draw.dark-canvas",
+  DEFAULT_DARK_CANVAS,
+  (value): value is boolean => typeof value === "boolean"
+)
+
+export function getThemePreference(): ThemePreference {
+  return themeSetting.getSnapshot()
 }
 
 export function getResolvedTheme(): ResolvedTheme {
@@ -46,10 +51,9 @@ export function applyTheme(theme = getResolvedTheme()) {
   themeColor?.setAttribute("content", theme === "dark" ? "#15171d" : "#f8fafc")
 }
 
-export function setThemePreference(theme: ThemePreference) {
-  window.localStorage.setItem(THEME_KEY, theme)
+export async function setThemePreference(theme: ThemePreference) {
+  await themeSetting.set(theme)
   applyTheme(theme === "system" ? undefined : theme)
-  window.dispatchEvent(new Event(THEME_EVENT))
 }
 
 function subscribeToTheme(onStoreChange: () => void) {
@@ -59,13 +63,11 @@ function subscribeToTheme(onStoreChange: () => void) {
     onStoreChange()
   }
 
-  window.addEventListener("storage", handleThemeChange)
-  window.addEventListener(THEME_EVENT, handleThemeChange)
+  const unsubscribe = themeSetting.subscribe(handleThemeChange)
   mediaQuery.addEventListener("change", handleThemeChange)
 
   return () => {
-    window.removeEventListener("storage", handleThemeChange)
-    window.removeEventListener(THEME_EVENT, handleThemeChange)
+    unsubscribe()
     mediaQuery.removeEventListener("change", handleThemeChange)
   }
 }
@@ -83,29 +85,17 @@ export function useResolvedTheme(): ResolvedTheme {
 }
 
 export function getDarkCanvasPreference() {
-  if (typeof window === "undefined") return DEFAULT_DARK_CANVAS
-  return window.localStorage.getItem(DARK_CANVAS_KEY) === "true"
+  return darkCanvasSetting.getSnapshot()
 }
 
 export function setDarkCanvasPreference(value: boolean) {
-  window.localStorage.setItem(DARK_CANVAS_KEY, String(value))
-  window.dispatchEvent(new Event(DARK_CANVAS_EVENT))
-}
-
-function subscribeToDarkCanvas(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange)
-  window.addEventListener(DARK_CANVAS_EVENT, onStoreChange)
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange)
-    window.removeEventListener(DARK_CANVAS_EVENT, onStoreChange)
-  }
+  return darkCanvasSetting.set(value)
 }
 
 export function useDarkCanvasPreference(): boolean {
   return useSyncExternalStore(
-    subscribeToDarkCanvas,
-    getDarkCanvasPreference,
+    darkCanvasSetting.subscribe,
+    darkCanvasSetting.getSnapshot,
     () => DEFAULT_DARK_CANVAS
   )
 }
