@@ -82,6 +82,32 @@ html, body {
   overscroll-behavior: none; /* lock page */
 }
 
+* {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+img,
+a {
+  -webkit-user-drag: none;
+}
+
+[draggable="true"] {
+  -webkit-user-drag: element;
+}
+
+html[data-ipad="true"] .ipad-options-trigger {
+  opacity: 1 !important;
+}
+
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

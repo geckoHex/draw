@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import { SerwistProvider } from "@serwist/next/react";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Geist_Mono } from "next/font/google";
+import { IPadAppBehavior } from "@/components/ipad-app-behavior";
 import "./globals.css";
 
 const satoshi = localFont({
@@ -35,8 +37,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "GeckoDraw",
   title: "GeckoDraw",
   description: "Free, local, no account whiteboard creator and manager with power-user features and a modern UI.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "GeckoDraw",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon-167x167.png", sizes: "167x167", type: "image/png" },
+      { url: "/apple-touch-icon-152x152.png", sizes: "152x152", type: "image/png" },
+    ],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -49,7 +74,13 @@ export default function RootLayout({
       <body
         className={`${satoshi.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SerwistProvider
+          swUrl="/sw.js"
+          disable={process.env.NODE_ENV === "development"}
+        >
+          <IPadAppBehavior />
+          {children}
+        </SerwistProvider>
       </body>
     </html>
   );

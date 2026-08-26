@@ -85,7 +85,7 @@ export function FolderCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+            className="ipad-options-trigger h-9 w-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all shrink-0"
             aria-label={`Folder options for ${name}`}
             title="Folder options"
             onClick={(event) => event.stopPropagation()}

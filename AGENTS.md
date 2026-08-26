@@ -18,6 +18,13 @@ Follow the existing theme when designing new UI.
 - Elements should not change size or position when hovered or interacted with.
 - Shadows should not change on hover/ interaction.
 
+### Mobile Devices
+- Disable selection for text, images, links, buttons, and other interface elements. Only text inside text fields and text areas may be selected.
+- Disable native element dragging. Only boards, folder drop targets, and elements intentionally designed for dragging may participate in drag-and-drop.
+- On iPad, keep the options menu buttons for folders and boards visible at all times instead of relying on hover.
+- Optimize the interface for landscape orientation only.
+- Preserve the existing UI while applying these mobile behavior changes.
+
 ## Coding Standards
 
 ### Clean Code

@@ -557,7 +557,7 @@ export default function Home() {
                             size="icon"
                             aria-label={`Board options for ${board.title || "Untitled Board"}`}
                             title="Board options"
-                            className="-mr-1 h-8 w-8 shrink-0 rounded-lg text-gray-400 opacity-100 hover:bg-gray-100 hover:text-gray-700 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                            className="ipad-options-trigger -mr-1 h-8 w-8 shrink-0 rounded-lg text-gray-400 opacity-100 hover:bg-gray-100 hover:text-gray-700 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                             onClick={(event) => event.stopPropagation()}
                           >
                             <MoreVertical className="h-4 w-4" />
