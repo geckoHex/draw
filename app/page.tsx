@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Search, X, FolderPlus, MoreVertical, Edit2, FolderInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -342,61 +342,21 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-8 md:p-12 relative overflow-hidden">
+    <main className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 px-8 pb-8 pt-32 md:px-12 md:pb-12 md:pt-36 relative overflow-hidden">
       {/* Static background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="max-w-[1600px] mx-auto space-y-8 relative z-10">
-        {/* Header */}
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl font-bold bg-linear-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent tracking-tight">
-                {selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name : 'My Boards'}
-              </h1>
-              <p className="text-sm text-gray-600">
-                {boards.length === 0 ? 'Start creating your first board' : `${boards.length} board${boards.length === 1 ? '' : 's'}${searchQuery ? ` • ${filteredBoards.length} board${filteredBoards.length === 1 ? '' : 's'}, ${filteredFolders.length} folder${filteredFolders.length === 1 ? '' : 's'}` : ''}`}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              {selectedFolderId && (
-                <Button
-                  onClick={handleBackToRoot}
-                  variant="outline"
-                  size="lg"
-                  className="rounded-2xl px-6"
-                >
-                  Back to All Boards
-                </Button>
-              )}
-              {!selectedFolderId && (
-                <Button
-                  onClick={() => setShowFolderModal(true)}
-                  variant="outline"
-                  size="lg"
-                  className="rounded-2xl px-6"
-                >
-                  <FolderPlus className="mr-2 h-5 w-5" />
-                  New Folder
-                </Button>
-              )}
-              <Button
-                onClick={createNewBoard}
-                size="lg"
-                className="rounded-2xl px-8 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20 transition-all hover:scale-105 bg-linear-to-r from-gray-900 to-gray-800"
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                New Board
-              </Button>
-            </div>
+      <div className="fixed inset-x-4 top-4 z-50 md:inset-x-8 md:top-6">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-3xl border border-white/70 bg-white/80 p-3 shadow-lg shadow-slate-900/10 backdrop-blur-xl md:gap-6 md:px-5">
+          <div className="whitespace-nowrap text-sm font-bold tracking-tight text-gray-900 sm:text-lg">
+            GeckoHex/Draw
           </div>
 
-          {/* Search Bar */}
-          {boards.length > 0 && (
-            <div className="relative max-w-md">
+          <div className="flex justify-center">
+            <div className="relative w-full max-w-xl">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
                 type="text"
@@ -408,14 +368,57 @@ export default function Home() {
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <X className="h-4 w-4 text-gray-400" />
                 </button>
               )}
             </div>
-          )}
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowFolderModal(true)}
+              variant="outline"
+              size="icon"
+              aria-label="New folder"
+              title="New folder"
+              className="h-11 w-11 rounded-2xl bg-white/70"
+            >
+              <FolderPlus className="h-5 w-5" />
+            </Button>
+            <Button
+              onClick={createNewBoard}
+              size="icon"
+              aria-label="New board"
+              title="New board"
+              className="h-11 w-11 rounded-2xl bg-linear-to-r from-gray-900 to-gray-800 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
+      </div>
+
+      <div className="max-w-[1600px] mx-auto space-y-8 relative z-10">
+        {selectedFolderId && (
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleBackToRoot}
+              variant="outline"
+              size="icon"
+              aria-label="Back to boards"
+              title="Back to boards"
+              className="h-10 w-10 rounded-xl bg-white/70"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              {folders.find(f => f.id === selectedFolderId)?.name}
+            </h1>
+          </div>
+        )}
 
         {/* Folders Grid - Only show in root view */}
         {!selectedFolderId && filteredFolders.length > 0 && (
@@ -448,11 +451,6 @@ export default function Home() {
             onDragOver={handleDragOver}
             onDrop={handleDropOnRoot}
           >
-            {!selectedFolderId && (
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                {searchQuery ? `Boards (${filteredBoards.length})` : 'All Boards'}
-              </h2>
-            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {filteredBoards.map((board) => {
                 const boardFolder = board.folderId ? folders.find(f => f.id === board.folderId) : null;
