@@ -38,6 +38,25 @@ interface MetadataRecord {
   completedAt: number;
 }
 
+export interface ExportedDatabaseStore {
+  name: string;
+  keyPath: string | string[] | null;
+  autoIncrement: boolean;
+  records: Array<{
+    key: IDBValidKey;
+    value: unknown;
+  }>;
+}
+
+export interface ExportedDatabase {
+  application: "GeckoDraw";
+  database: typeof DB_NAME;
+  databaseVersion: number;
+  exportVersion: 1;
+  exportedAt: string;
+  stores: ExportedDatabaseStore[];
+}
+
 const DB_NAME = "GeckoDrawDB";
 const DB_VERSION = 1;
 const BOARD_STORE_NAME = "boards";
@@ -279,6 +298,41 @@ export function initDB(): Promise<IDBDatabase> {
   });
 
   return databasePromise;
+}
+
+export async function exportDatabase(): Promise<ExportedDatabase> {
+  const database = await initDB();
+  const storeNames = Array.from(database.objectStoreNames);
+  const transaction = database.transaction(storeNames, "readonly");
+  const completion = transactionComplete(transaction);
+
+  const stores = await Promise.all(
+    storeNames.map(async (name): Promise<ExportedDatabaseStore> => {
+      const store = transaction.objectStore(name);
+      const [keys, values] = await Promise.all([
+        requestResult<IDBValidKey[]>(store.getAllKeys()),
+        requestResult<unknown[]>(store.getAll()),
+      ]);
+
+      return {
+        name,
+        keyPath: store.keyPath,
+        autoIncrement: store.autoIncrement,
+        records: values.map((value, index) => ({ key: keys[index], value })),
+      };
+    })
+  );
+
+  await completion;
+
+  return {
+    application: "GeckoDraw",
+    database: DB_NAME,
+    databaseVersion: database.version,
+    exportVersion: 1,
+    exportedAt: new Date().toISOString(),
+    stores,
+  };
 }
 
 export async function getSettingValue<T>(key: string): Promise<T | undefined> {

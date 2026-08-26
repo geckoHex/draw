@@ -3,6 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { ExportDataModal } from "@/components/export-data-modal"
+import { Button } from "@/components/ui/button"
 import { SettingToggle } from "@/components/ui/setting-toggle"
 import { Slider } from "@/components/ui/slider"
 import { ThemeSelect } from "@/components/ui/theme-select"
@@ -21,10 +23,11 @@ import {
   useThemePreference,
 } from "@/lib/interface-settings"
 
-type SettingsTab = "drawing" | "interface"
+type SettingsTab = "drawing" | "interface" | "data"
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("drawing")
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const penSmoothing = usePenSmoothing()
   const showSaveStatus = useShowSaveStatus()
   const theme = useThemePreference()
@@ -48,7 +51,7 @@ export default function SettingsPage() {
         </div>
 
         <nav aria-label="Settings groups" className="mb-10 flex border-b border-border">
-          {(["drawing", "interface"] as const).map((tab) => (
+          {(["drawing", "interface", "data"] as const).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -66,7 +69,7 @@ export default function SettingsPage() {
           ))}
         </nav>
 
-        {activeTab === "drawing" ? (
+        {activeTab === "drawing" && (
           <section aria-labelledby="pen-smoothing-heading" className="max-w-xl">
             <h2 id="pen-smoothing-heading" className="mb-5 text-sm font-semibold text-foreground">
               Pen smoothing
@@ -98,7 +101,9 @@ export default function SettingsPage() {
               />
             </div>
           </section>
-        ) : (
+        )}
+
+        {activeTab === "interface" && (
           <section aria-labelledby="interface-heading" className="max-w-xl">
             <h2 id="interface-heading" className="sr-only">Interface</h2>
 
@@ -127,7 +132,29 @@ export default function SettingsPage() {
             </div>
           </section>
         )}
+
+        {activeTab === "data" && (
+          <section aria-labelledby="data-heading" className="max-w-xl">
+            <div className="flex items-center justify-between gap-6">
+              <h2 id="data-heading" className="text-sm font-semibold text-foreground">
+                Export all data
+              </h2>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsExportModalOpen(true)}
+                className="h-11 rounded-xl bg-card/70 px-4 shadow-none"
+              >
+                Export data
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
+
+      {isExportModalOpen && (
+        <ExportDataModal onClose={() => setIsExportModalOpen(false)} />
+      )}
     </main>
   )
 }
