@@ -642,12 +642,14 @@ export default function Home() {
         />
       )}
 
-      <RenameBoardModal
-        isOpen={boardToRename !== null}
-        onClose={() => setBoardToRename(null)}
-        onSave={handleRenameBoard}
-        initialName={boardToRename?.title || ""}
-      />
+      {boardToRename && (
+        <RenameBoardModal
+          isOpen
+          onClose={() => setBoardToRename(null)}
+          onSave={handleRenameBoard}
+          initialName={boardToRename.title}
+        />
+      )}
 
       <FolderPickerModal
         isOpen={boardToMove !== null}

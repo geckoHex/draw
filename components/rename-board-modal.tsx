@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
@@ -19,6 +19,18 @@ export function RenameBoardModal({
   initialName,
 }: RenameBoardModalProps) {
   const [name, setName] = useState(initialName)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const animationFrame = requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    })
+
+    return () => cancelAnimationFrame(animationFrame)
+  }, [initialName, isOpen])
 
   const handleSave = () => {
     if (name.trim()) {
@@ -28,9 +40,7 @@ export function RenameBoardModal({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSave()
-    } else if (e.key === "Escape") {
+    if (e.key === "Escape") {
       onClose()
     }
   }
@@ -38,60 +48,78 @@ export function RenameBoardModal({
   if (!isOpen) return null
 
   return (
-    <div key={initialName} className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2">
-          <h2 className="text-2xl font-bold text-gray-900">Rename Board</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="rounded-xl hover:bg-gray-100"
+        className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rename-board-title"
+      >
+        <div className="mb-5 pr-10">
+          <h2
+            id="rename-board-title"
+            className="text-xl font-semibold text-gray-900"
           >
-            <X className="h-5 w-5" />
-          </Button>
+            Rename Board
+          </h2>
         </div>
 
-        {/* Form */}
-        <div className="space-y-3">
-          <label className="text-sm font-semibold text-gray-700">
-            Board Name
-          </label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Enter board name..."
-            className="h-14 rounded-2xl text-base px-4"
-            autoFocus
-          />
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          aria-label="Close rename board dialog"
+        >
+          <X className="h-4 w-4" />
+        </button>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 h-14 rounded-2xl text-base font-medium"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim()}
-            className="flex-1 h-14 rounded-2xl text-base font-medium bg-linear-to-r from-gray-900 to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Save Changes
-          </Button>
-        </div>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleSave()
+          }}
+        >
+          <div className="space-y-2">
+            <label
+              htmlFor="board-name"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Board Name
+            </label>
+            <Input
+              ref={inputRef}
+              id="board-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter board name..."
+              className="h-11 rounded-xl px-3.5 text-base"
+            />
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="h-10 flex-1 rounded-xl shadow-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!name.trim()}
+              className="h-10 flex-1 rounded-xl bg-gray-900 hover:bg-gray-800 disabled:cursor-not-allowed"
+            >
+              Save Changes
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   )
