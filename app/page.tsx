@@ -451,7 +451,7 @@ export default function Home() {
             onDragOver={handleDragOver}
             onDrop={handleDropOnRoot}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredBoards.map((board) => {
                 const boardFolder = board.folderId ? folders.find(f => f.id === board.folderId) : null;
                 return (
@@ -459,39 +459,43 @@ export default function Home() {
                     key={board.id}
                     draggable={!selectedFolderId}
                     onDragStart={(e) => handleDragStart(e, board.id)}
-                    className="group relative flex flex-col p-6 h-[280px] w-full rounded-3xl bg-white border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer"
+                    className="group relative flex h-[260px] w-full cursor-pointer flex-col rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-gray-300 hover:shadow-md"
                     onClick={() => router.push(`/board/${board.id}`)}
                   >
                     {/* Card Header */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex flex-col gap-2 max-w-[75%]">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate leading-tight" title={board.title || "Untitled Board"}>
+                    <div className="mb-3 flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-base font-semibold leading-tight text-gray-900" title={board.title || "Untitled Board"}>
                           {board.title || "Untitled Board"}
                         </h3>
-                        <span className="text-xs text-gray-500 font-medium">
-                          {timeAgo(board.updatedAt)}
-                        </span>
-                        {boardFolder && (
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium w-fit"
-                            style={{
-                              backgroundColor: `${boardFolder.color}15`,
-                              color: boardFolder.color
-                            }}
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                            </svg>
-                            {boardFolder.name}
+                        <div className="mt-1 flex min-w-0 items-center gap-2">
+                          <span className="shrink-0 text-xs text-gray-500">
+                            {timeAgo(board.updatedAt)}
                           </span>
-                        )}
+                          {boardFolder && (
+                            <span
+                              className="inline-flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium"
+                              style={{
+                                backgroundColor: `${boardFolder.color}15`,
+                                color: boardFolder.color
+                              }}
+                            >
+                              <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                              </svg>
+                              <span className="truncate">{boardFolder.name}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <DropdownMenu
                         trigger={
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all"
+                            aria-label={`Board options for ${board.title || "Untitled Board"}`}
+                            title="Board options"
+                            className="-mr-1 h-8 w-8 shrink-0 rounded-lg text-gray-400 opacity-100 hover:bg-gray-100 hover:text-gray-700 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
@@ -526,12 +530,12 @@ export default function Home() {
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenu>
-                </div>
-                
-                {/* Preview Container */}
-                <div className="flex-1 relative rounded-2xl overflow-hidden bg-white border border-gray-100 min-h-0">
-                  <BoardPreview strokes={board.strokes} />
-                </div>
+                    </div>
+
+                    {/* Preview Container */}
+                    <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200/80 bg-white">
+                      <BoardPreview strokes={board.strokes} />
+                    </div>
                 </div>
               );
             })}
