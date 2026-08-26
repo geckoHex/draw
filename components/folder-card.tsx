@@ -48,7 +48,7 @@ export function FolderCard({
 
   return (
     <div
-      className="group relative flex items-center gap-3 p-4 w-full rounded-2xl bg-white border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-xl transition-all duration-200 cursor-pointer"
+      className="group relative flex items-center gap-3 p-4 w-full rounded-2xl bg-white border border-gray-200 hover:border-gray-300 shadow-sm transition-all duration-200 cursor-pointer"
       onClick={onClick}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -59,7 +59,7 @@ export function FolderCard({
         className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
         style={{ backgroundColor: `${color}15` }}
       >
-        <Folder className="h-6 w-6" style={{ color }} />
+        <Folder className="h-6 w-6" fill="currentColor" style={{ color }} />
       </div>
 
       {/* Folder Info */}

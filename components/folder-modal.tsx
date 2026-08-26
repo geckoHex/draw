@@ -15,14 +15,13 @@ interface FolderModalProps {
 }
 
 const FOLDER_COLORS = [
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Purple", value: "#8b5cf6" },
-  { name: "Pink", value: "#ec4899" },
-  { name: "Amber", value: "#f59e0b" },
-  { name: "Green", value: "#10b981" },
-  { name: "Cyan", value: "#06b6d4" },
+  { name: "Black (Default)", value: "#000000" },
+  { name: "Red", value: "#ef4444" },
   { name: "Orange", value: "#f97316" },
-  { name: "Indigo", value: "#6366f1" },
+  { name: "Yellow", value: "#eab308" },
+  { name: "Green", value: "#22c55e" },
+  { name: "Blue", value: "#3b82f6" },
+  { name: "Purple", value: "#a855f7" },
 ]
 
 export function FolderModal({
@@ -30,7 +29,7 @@ export function FolderModal({
   onClose,
   onSave,
   initialName = "",
-  initialColor = "#3b82f6",
+  initialColor = "#000000",
   title = "Create New Folder",
 }: FolderModalProps) {
   const [name, setName] = useState(initialName)
@@ -118,7 +117,7 @@ export function FolderModal({
             <legend className="text-sm font-medium text-gray-700">
               Choose Color
             </legend>
-            <div className="grid grid-cols-8 gap-2 rounded-xl bg-gray-50 p-3">
+            <div className="grid grid-cols-7 gap-2 rounded-xl bg-gray-50 p-3">
               {FOLDER_COLORS.map((folderColor) => (
                 <button
                   key={folderColor.value}
