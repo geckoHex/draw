@@ -1,10 +1,10 @@
 "use client"
 
-import type { Account } from "@/lib/data-types"
+import type { Account, AdminAccount } from "@/lib/data-types"
 
 export type AuthState =
   | { authenticated: true; account: Account }
-  | { authenticated: false; returningAccount?: Account }
+  | { authenticated: false; setupRequired: boolean; returningAccount?: Account }
 
 async function authRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -42,6 +42,13 @@ export function signUp(username: string, password: string) {
   })
 }
 
+export function setupRootAccount(password: string) {
+  return authRequest<{ account: Account }>("/api/auth/setup", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  })
+}
+
 export function checkUsernameAvailability(username: string, signal?: AbortSignal) {
   const query = new URLSearchParams({ username })
   return authRequest<{ available: boolean }>(`/api/auth/username?${query}`, { signal })
@@ -63,4 +70,31 @@ export function changePassword(password: string) {
 
 export function signOut() {
   return authRequest<{ signedOut: true }>("/api/auth/sign-out", { method: "POST" })
+}
+
+export function getAdminAccounts() {
+  return authRequest<{ accounts: AdminAccount[] }>("/api/admin/accounts")
+}
+
+export function createAdminAccount(username: string, password: string) {
+  return authRequest<{ account: AdminAccount }>("/api/admin/accounts", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  })
+}
+
+export function updateAdminAccount(
+  id: string,
+  changes: { username?: string; password?: string }
+) {
+  return authRequest<{ account: AdminAccount }>(`/api/admin/accounts/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(changes),
+  })
+}
+
+export function deleteAdminAccount(id: string) {
+  return authRequest<{ deleted: boolean }>(`/api/admin/accounts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  })
 }

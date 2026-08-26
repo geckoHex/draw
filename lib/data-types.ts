@@ -30,4 +30,10 @@ export interface Folder {
 export interface Account {
   id: string;
   username: string;
+  isRoot: boolean;
+}
+
+export interface AdminAccount extends Account {
+  createdAt: number;
+  updatedAt: number;
 }

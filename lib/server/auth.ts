@@ -19,6 +19,7 @@ const MAX_USERNAME_LENGTH = 80
 const MAX_PASSWORD_LENGTH = 1024
 
 export class AuthenticationError extends Error {}
+export class AuthorizationError extends Error {}
 
 function parseCookies(request: Request) {
   const cookies = new Map<string, string>()
@@ -52,8 +53,8 @@ export function parseUsername(value: unknown) {
 }
 
 export function parsePassword(value: unknown) {
-  if (typeof value !== "string" || value.length > MAX_PASSWORD_LENGTH) {
-    throw new RequestValidationError("The password is invalid.")
+  if (typeof value !== "string" || value.length === 0 || value.length > MAX_PASSWORD_LENGTH) {
+    throw new RequestValidationError("Enter a password.")
   }
   return value
 }
@@ -101,8 +102,14 @@ export function requireAuthenticatedAccount(request: Request) {
   return account
 }
 
+export function requireRootAccount(request: Request) {
+  const account = requireAuthenticatedAccount(request)
+  if (!account.isRoot) throw new AuthorizationError("Root access is required.")
+  return account
+}
+
 export function publicAccount(account: Account): Account {
-  return { id: account.id, username: account.username }
+  return { id: account.id, username: account.username, isRoot: account.isRoot }
 }
 
 export function issueSession(accountId: string) {

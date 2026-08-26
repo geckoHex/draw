@@ -5,6 +5,8 @@ import { Loader2 } from "lucide-react"
 import type { Account } from "@/lib/data-types"
 import { getAuthState } from "@/lib/auth-client"
 import { AuthPage } from "@/components/auth-page"
+import { RootSetupPage } from "@/components/root-setup-page"
+import { AdminPanel } from "@/components/admin-panel"
 import { ThemeManager } from "@/components/theme-manager"
 
 interface AuthContextValue {
@@ -23,6 +25,7 @@ export function useAuth() {
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [account, setAccount] = useState<Account>()
   const [returningAccount, setReturningAccount] = useState<Account>()
+  const [setupRequired, setSetupRequired] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
 
@@ -30,7 +33,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     getAuthState()
       .then((state) => {
         if (state.authenticated) setAccount(state.account)
-        else setReturningAccount(state.returningAccount)
+        else {
+          setReturningAccount(state.returningAccount)
+          setSetupRequired(state.setupRequired)
+        }
       })
       .catch(() => setLoadFailed(true))
       .finally(() => setIsLoading(false))
@@ -45,6 +51,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!account) {
+    if (setupRequired) {
+      return <RootSetupPage onAuthenticated={() => window.location.reload()} />
+    }
+
     return (
       <>
         {loadFailed && (
@@ -63,7 +73,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{ account, setAccount }}>
       <ThemeManager />
-      {children}
+      {account.isRoot ? <AdminPanel /> : children}
     </AuthContext.Provider>
   )
 }

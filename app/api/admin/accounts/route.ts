@@ -1,11 +1,9 @@
-import { createAccount, hasAnyAccounts, isUsernameAvailable } from "@/lib/server/database"
+import { createAccount, getAllAccounts, isUsernameAvailable } from "@/lib/server/database"
 import {
   hashPassword,
-  issueSession,
   parsePassword,
   parseUsername,
-  publicAccount,
-  setSignedInCookies,
+  requireRootAccount,
 } from "@/lib/server/auth"
 import { dataResponse, routeError } from "@/lib/server/http"
 import { RequestValidationError } from "@/lib/server/validation"
@@ -22,16 +20,23 @@ function isUniqueUsernameError(error: unknown) {
     && error.message.includes("UNIQUE constraint failed: accounts.username_normalized")
 }
 
+export async function GET(request: Request) {
+  try {
+    requireRootAccount(request)
+    return dataResponse({ accounts: getAllAccounts() })
+  } catch (error) {
+    return routeError(error)
+  }
+}
+
 export async function POST(request: Request) {
   try {
+    requireRootAccount(request)
     const body = await request.json()
     if (!isRecord(body)) throw new RequestValidationError("The account details are invalid.")
 
     const { username, usernameNormalized } = parseUsername(body.username)
     const password = parsePassword(body.password)
-    if (!hasAnyAccounts()) {
-      return dataResponse({ error: "Create the root account before adding other accounts." }, 409)
-    }
     if (usernameNormalized === "root") {
       return dataResponse({ error: "The root username is reserved." }, 409)
     }
@@ -40,14 +45,16 @@ export async function POST(request: Request) {
     }
 
     const account = createAccount(username, usernameNormalized, hashPassword(password))
-    const session = issueSession(account.id)
-    const response = dataResponse({ account: publicAccount(account) }, 201)
-    setSignedInCookies(response, session, account.id)
-    return response
+    return dataResponse({
+      account: {
+        id: account.id,
+        username: account.username,
+        isRoot: account.isRoot,
+        createdAt: account.createdAt,
+        updatedAt: account.updatedAt,
+      },
+    }, 201)
   } catch (error) {
-    if (error instanceof Error && error.message === "ROOT_ACCOUNT_REQUIRED") {
-      return dataResponse({ error: "Create the root account before adding other accounts." }, 409)
-    }
     if (isUniqueUsernameError(error)) {
       return dataResponse({ error: "That username is already taken." }, 409)
     }

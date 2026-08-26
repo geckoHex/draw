@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { AuthenticationError } from "@/lib/server/auth"
+import { AuthenticationError, AuthorizationError } from "@/lib/server/auth"
 import { RequestValidationError } from "@/lib/server/validation"
 
 const NO_STORE_HEADERS = {
@@ -13,6 +13,10 @@ export function dataResponse<T>(data: T, status = 200) {
 export function routeError(error: unknown) {
   if (error instanceof AuthenticationError) {
     return dataResponse({ error: error.message }, 401)
+  }
+
+  if (error instanceof AuthorizationError) {
+    return dataResponse({ error: error.message }, 403)
   }
 
   if (error instanceof RequestValidationError) {

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   username TEXT NOT NULL,
   username_normalized TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  is_root INTEGER NOT NULL DEFAULT 0 CHECK (is_root IN (0, 1)),
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -46,6 +47,10 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at
 ON sessions(expires_at);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_single_root
+ON accounts(is_root)
+WHERE is_root = 1;
+
 CREATE INDEX IF NOT EXISTS idx_boards_account_root_updated_at
 ON boards(account_id, updated_at DESC)
 WHERE folder_id IS NULL;
@@ -57,5 +62,5 @@ WHERE folder_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_folders_account_updated_at
 ON folders(account_id, updated_at DESC);
 
-PRAGMA user_version = 2;
+PRAGMA user_version = 3;
 PRAGMA optimize;

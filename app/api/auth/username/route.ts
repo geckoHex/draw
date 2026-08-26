@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     const account = getAuthenticatedAccount(request)
     return dataResponse({
       available: normalized.length > 0
+        && normalized !== "root"
         && username.trim().length <= 80
         && isUsernameAvailable(normalized, account?.id),
     })

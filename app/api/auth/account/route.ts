@@ -35,6 +35,9 @@ export async function PATCH(request: Request) {
     if (!isRecord(body)) throw new RequestValidationError("The account update is invalid.")
 
     if ("username" in body && !("password" in body)) {
+      if (account.isRoot) {
+        return dataResponse({ error: "The root username cannot be changed." }, 403)
+      }
       const { username, usernameNormalized } = parseUsername(body.username)
       if (!isUsernameAvailable(usernameNormalized, account.id)) {
         return dataResponse({ error: "That username is already taken." }, 409)

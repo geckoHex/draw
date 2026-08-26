@@ -1,4 +1,4 @@
-import { getAccountById } from "@/lib/server/database"
+import { getAccountById, hasAnyAccounts } from "@/lib/server/database"
 import {
   clearSessionCookie,
   getAuthenticatedAccount,
@@ -22,6 +22,7 @@ export async function GET(request: Request) {
     const returningAccount = lastAccountId ? getAccountById(lastAccountId) : undefined
     const response = dataResponse({
       authenticated: false,
+      setupRequired: !hasAnyAccounts(),
       returningAccount: returningAccount ? publicAccount(returningAccount) : undefined,
     })
     if (getSessionToken(request)) clearSessionCookie(response)

@@ -4,7 +4,7 @@ import Database from "better-sqlite3"
 import { randomUUID } from "node:crypto"
 import { mkdirSync, readFileSync } from "node:fs"
 import path from "node:path"
-import type { Account, Board, Folder, Stroke } from "@/lib/data-types"
+import type { Account, AdminAccount, Board, Folder, Stroke } from "@/lib/data-types"
 
 interface BoardRow {
   id: string
@@ -37,6 +37,7 @@ interface AccountRow {
   username: string
   username_normalized: string
   password_hash: string
+  is_root: number
   created_at: number
   updated_at: number
 }
@@ -95,6 +96,7 @@ function migrateLegacyDatabase(database: Database.Database) {
         username TEXT NOT NULL,
         username_normalized TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
+        is_root INTEGER NOT NULL DEFAULT 0 CHECK (is_root IN (0, 1)),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -134,6 +136,21 @@ function migrateLegacyDatabase(database: Database.Database) {
   })()
 }
 
+function migrateAccountRoles(database: Database.Database) {
+  if (!tableExists(database, "accounts") || columnExists(database, "accounts", "is_root")) {
+    return
+  }
+
+  database.exec(`
+    ALTER TABLE accounts
+    ADD COLUMN is_root INTEGER NOT NULL DEFAULT 0 CHECK (is_root IN (0, 1));
+
+    UPDATE accounts
+    SET is_root = 1
+    WHERE username_normalized = 'root';
+  `)
+}
+
 function openDatabase() {
   const databasePath = process.env.GECKODRAW_DATABASE_PATH
     ? path.resolve(process.env.GECKODRAW_DATABASE_PATH)
@@ -148,6 +165,7 @@ function openDatabase() {
   database.pragma("synchronous = NORMAL")
   database.pragma("busy_timeout = 5000")
   migrateLegacyDatabase(database)
+  migrateAccountRoles(database)
   database.exec(readFileSync(schemaPath, "utf8"))
 
   return database
@@ -183,6 +201,7 @@ function accountFromRow(row: AccountRow): AccountCredentials {
   return {
     id: row.id,
     username: row.username,
+    isRoot: row.is_root === 1,
     usernameNormalized: row.username_normalized,
     passwordHash: row.password_hash,
     createdAt: row.created_at,
@@ -219,25 +238,22 @@ export function createAccount(
 ): AccountCredentials {
   const database = getDatabase()
   const create = database.transaction(() => {
-    const isFirstAccount = (
+    const accountCount = (
       database.prepare<[], { account_count: number }>(
         "SELECT COUNT(*) AS account_count FROM accounts"
       ).get()?.account_count ?? 0
-    ) === 0
+    )
+    if (accountCount === 0) {
+      throw new Error("ROOT_ACCOUNT_REQUIRED")
+    }
     const timestamp = Date.now()
     const id = randomUUID()
 
     database.prepare(`
       INSERT INTO accounts (
-        id, username, username_normalized, password_hash, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        id, username, username_normalized, password_hash, is_root, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, 0, ?, ?)
     `).run(id, username, usernameNormalized, passwordHash, timestamp, timestamp)
-
-    if (isFirstAccount) {
-      database.prepare("UPDATE folders SET account_id = ? WHERE account_id IS NULL").run(id)
-      database.prepare("UPDATE boards SET account_id = ? WHERE account_id IS NULL").run(id)
-      database.prepare("UPDATE settings SET account_id = ? WHERE account_id IS NULL").run(id)
-    }
 
     seedDefaultSettings(database, id)
     return getAccountById(id) as AccountCredentials
@@ -246,10 +262,60 @@ export function createAccount(
   return create()
 }
 
+export function createInitialRootAccount(passwordHash: string): AccountCredentials | undefined {
+  const database = getDatabase()
+  const create = database.transaction(() => {
+    const accountCount = database
+      .prepare<[], { account_count: number }>("SELECT COUNT(*) AS account_count FROM accounts")
+      .get()?.account_count ?? 0
+    if (accountCount !== 0) return undefined
+
+    const timestamp = Date.now()
+    const id = randomUUID()
+    database.prepare(`
+      INSERT INTO accounts (
+        id, username, username_normalized, password_hash, is_root, created_at, updated_at
+      ) VALUES (?, 'root', 'root', ?, 1, ?, ?)
+    `).run(id, passwordHash, timestamp, timestamp)
+
+    database.prepare("UPDATE folders SET account_id = ? WHERE account_id IS NULL").run(id)
+    database.prepare("UPDATE boards SET account_id = ? WHERE account_id IS NULL").run(id)
+    database.prepare("UPDATE settings SET account_id = ? WHERE account_id IS NULL").run(id)
+    seedDefaultSettings(database, id)
+
+    return getAccountById(id)
+  })
+
+  return create()
+}
+
+export function hasAnyAccounts() {
+  return Boolean(
+    getDatabase().prepare<[], { found: number }>("SELECT 1 AS found FROM accounts LIMIT 1").get()
+  )
+}
+
+export function getAllAccounts(): AdminAccount[] {
+  const rows = getDatabase()
+    .prepare<[], AccountRow>(`
+      SELECT id, username, username_normalized, password_hash, is_root, created_at, updated_at
+      FROM accounts
+      ORDER BY is_root DESC, username_normalized ASC
+    `)
+    .all()
+  return rows.map((row) => ({
+    id: row.id,
+    username: row.username,
+    isRoot: row.is_root === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }))
+}
+
 export function getAccountById(id: string): AccountCredentials | undefined {
   const row = getDatabase()
     .prepare<[string], AccountRow>(`
-      SELECT id, username, username_normalized, password_hash, created_at, updated_at
+      SELECT id, username, username_normalized, password_hash, is_root, created_at, updated_at
       FROM accounts
       WHERE id = ?
     `)
@@ -262,7 +328,7 @@ export function getAccountByNormalizedUsername(
 ): AccountCredentials | undefined {
   const row = getDatabase()
     .prepare<[string], AccountRow>(`
-      SELECT id, username, username_normalized, password_hash, created_at, updated_at
+      SELECT id, username, username_normalized, password_hash, is_root, created_at, updated_at
       FROM accounts
       WHERE username_normalized = ?
     `)
@@ -290,7 +356,7 @@ export function updateAccountUsername(
     .prepare(`
       UPDATE accounts
       SET username = ?, username_normalized = ?, updated_at = ?
-      WHERE id = ?
+      WHERE id = ? AND is_root = 0
     `)
     .run(username, usernameNormalized, Date.now(), accountId)
   return result.changes > 0 ? getAccountById(accountId) : undefined
@@ -300,6 +366,16 @@ export function updateAccountPassword(accountId: string, passwordHash: string) {
   return getDatabase()
     .prepare("UPDATE accounts SET password_hash = ?, updated_at = ? WHERE id = ?")
     .run(passwordHash, Date.now(), accountId).changes > 0
+}
+
+export function deleteAccount(accountId: string) {
+  return getDatabase()
+    .prepare("DELETE FROM accounts WHERE id = ? AND is_root = 0")
+    .run(accountId).changes > 0
+}
+
+export function deleteSessionsForAccount(accountId: string) {
+  getDatabase().prepare("DELETE FROM sessions WHERE account_id = ?").run(accountId)
 }
 
 export function createSession(tokenHash: string, accountId: string, expiresAt: number) {
@@ -323,6 +399,7 @@ export function getAccountBySession(
         accounts.username,
         accounts.username_normalized,
         accounts.password_hash,
+        accounts.is_root,
         accounts.created_at,
         accounts.updated_at,
         sessions.expires_at
