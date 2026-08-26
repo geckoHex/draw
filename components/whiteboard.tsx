@@ -72,6 +72,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   // Save board data (debounced or on change)
   useEffect(() => {
     const save = async () => {
+      setSaveStatus('saving')
+
       try {
         const board = await getBoard(boardId)
         await saveBoard({
@@ -90,7 +92,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       }
     }
     
-    const timeoutId = setTimeout(save, 1000) // Auto-save after 1s of inactivity
+    const timeoutId = setTimeout(save, 3000)
     return () => clearTimeout(timeoutId)
   }, [boardId, title, strokes])
 
@@ -222,10 +224,9 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     setStrokes(prev => [...prev, currentStroke])
     setCurrentStroke(null)
     setRedoStack([]) // Clear redo stack on new action
-    setSaveStatus('saving') // Immediately show saving status
   }
 
-  const undo = () => {
+  const undo = useCallback(() => {
     if (strokes.length === 0) return
     const newStrokes = [...strokes]
     const poppedStroke = newStrokes.pop()
@@ -233,9 +234,9 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       setStrokes(newStrokes)
       setRedoStack(prev => [...prev, poppedStroke])
     }
-  }
+  }, [strokes])
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (redoStack.length === 0) return
     const newRedoStack = [...redoStack]
     const poppedStroke = newRedoStack.pop()
@@ -243,7 +244,28 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       setRedoStack(newRedoStack)
       setStrokes(prev => [...prev, poppedStroke])
     }
-  }
+  }, [redoStack])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const isEditingText = target?.isContentEditable
+        || target?.tagName === 'INPUT'
+        || target?.tagName === 'TEXTAREA'
+
+      if (!event.metaKey || event.key.toLowerCase() !== 'z' || isEditingText) return
+
+      event.preventDefault()
+      if (event.shiftKey) {
+        redo()
+      } else {
+        undo()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [redo, undo])
 
   const clearCanvas = () => {
     setStrokes([])
@@ -269,8 +291,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         <circle cx="${half + 1}" cy="${half + 1}" r="${half - 1}" fill="none" stroke="white" stroke-width="1" />
       </svg>
     `;
-    const encoded = typeof window !== 'undefined' ? window.btoa(svg) : '';
-    return { cursor: `url("data:image/svg+xml;base64,${encoded}") ${half + 1} ${half + 1}, auto` };
+    const encoded = encodeURIComponent(svg);
+    return { cursor: `url("data:image/svg+xml,${encoded}") ${half + 1} ${half + 1}, auto` };
   }, [brushSize]);
 
   return (
@@ -330,7 +352,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
                     setTool('pen')
                     setBrushSize([penSize])
                   }}
-                  className={`shadow-none transition-colors ${tool === 'pen' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'pen' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                     <Pen className="h-4 w-4 mr-2" /> Pen
                 </Button>
@@ -342,7 +364,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
                     setTool('eraser')
                     setBrushSize([eraserSize])
                   }}
-                  className={`shadow-none transition-colors ${tool === 'eraser' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'eraser' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                     <Eraser className="h-4 w-4 mr-2" /> Eraser
                 </Button>
