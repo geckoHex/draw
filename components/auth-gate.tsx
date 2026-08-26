@@ -1,7 +1,8 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { Loader2 } from "lucide-react"
+import Image from "next/image"
+import { GlobeX, Loader2 } from "lucide-react"
 import type { Account } from "@/lib/data-types"
 import { getAuthState } from "@/lib/auth-client"
 import { AuthPage } from "@/components/auth-page"
@@ -51,22 +52,53 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!account) {
+    if (loadFailed) {
+      return (
+        <main className="app-background flex min-h-screen items-center justify-center px-5 py-12 sm:px-8">
+          <div className="w-full max-w-md">
+            <div className="mb-10 flex items-center justify-center gap-3.5">
+              <Image
+                src="/images/Gecko.png"
+                alt="Gecko Draw"
+                width={1145}
+                height={1374}
+                className="h-12 w-auto"
+                priority
+              />
+              <span className="text-2xl font-bold tracking-tight text-foreground">Gecko Draw</span>
+            </div>
+
+            <section
+              aria-labelledby="server-offline-title"
+              className="glass-surface rounded-3xl border px-8 py-10 text-center backdrop-blur-xl sm:px-10"
+            >
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-background/70">
+                <GlobeX className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+              </div>
+              <h1
+                id="server-offline-title"
+                className="mt-7 text-3xl font-bold tracking-tight text-foreground"
+              >
+                Service Offline
+              </h1>
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground sm:text-base">
+                Either the server is offline or can&apos;t be reached right now.
+              </p>
+            </section>
+          </div>
+        </main>
+      )
+    }
+
     if (setupRequired) {
       return <RootSetupPage onAuthenticated={() => window.location.reload()} />
     }
 
     return (
-      <>
-        {loadFailed && (
-          <p role="alert" className="fixed inset-x-6 top-6 z-10 text-center text-sm text-destructive">
-            Gecko Draw could not reach the account database. Try reloading the page.
-          </p>
-        )}
-        <AuthPage
-          returningAccount={returningAccount}
-          onAuthenticated={() => window.location.reload()}
-        />
-      </>
+      <AuthPage
+        returningAccount={returningAccount}
+        onAuthenticated={() => window.location.reload()}
+      />
     )
   }
 

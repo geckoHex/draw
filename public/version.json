@@ -1,5 +1,5 @@
 {
-    "version": "3.2.2",
-    "commit_message": "Move account changes into focused modals",
+    "version": "3.2.3",
+    "commit_message": "Polish the server offline screen",
     "authored_by": "Codex"
 }
