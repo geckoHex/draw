@@ -1,8 +1,8 @@
 "use client"
 
-import { getSettingValue, saveSettingValue } from "@/lib/db"
+import { getSettingValue, saveSettingValue } from "@/lib/data-client"
 
-export function createIndexedDBSetting<T>(
+export function createRemoteSetting<T>(
   key: string,
   defaultValue: T,
   isValid: (value: unknown) => value is T

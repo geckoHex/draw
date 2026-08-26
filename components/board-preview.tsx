@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-import { type Stroke } from '@/lib/db'
+import { type Stroke } from '@/lib/data-client'
 import { useDarkCanvas } from '@/lib/interface-settings'
 
 const LIGHT_CANVAS_COLOR = '#ffffff'

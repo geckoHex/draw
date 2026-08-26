@@ -32,10 +32,11 @@ Remember to implement light and dark mode versions of UI that respond to the set
 
 Write clean, clear, and easily maintainable code that's easy to modify. Each file should have one clear purpose like grouped logic, a component, etc.
 
-### Storage
+### Data
 
-Store **all user data** in an IndexedDB database called `GeckoDrawDB`. This includes canvases, folder structures, settings, etc. This database is the sole source of truth for the entire content and state of this app.
-Never use localstorage.
+All persistent user data lives in the repo-local SQLite database at `data/geckodraw.sqlite3`. The schema is defined in `database/schema.sql`, and the database is accessed only by the server-side code in `lib/server/database.ts` through the Next.js route handlers under `app/api`. The frontend must use `lib/data-client.ts` and these API routes for boards, folders, canvases, and settings. Never use IndexedDB, localStorage, sessionStorage, or the Cache API for user data. API responses must remain network-only and uncached so SQLite is always the sole source of truth.
+
+`./setup.sh` installs dependencies and initializes the database. Running it again completely deletes and recreates the database after requiring an explicit `RESET` confirmation whenever a database already exists. `./run.sh` is the everyday launcher: it installs missing dependencies, initializes a missing database, creates the optimized production build, and starts the production Next.js server with the database backend in the same process. The `data` directory contents are gitignored so user data is never committed.
 
 ### Making Changes
 

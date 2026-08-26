@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
-import { type Folder } from "@/lib/db"
+import { type Folder } from "@/lib/data-client"
 import { getFolderAccent, getFolderTint } from "@/lib/utils"
 
 interface FolderPickerModalProps {

@@ -20,6 +20,10 @@
 # production
 /build
 
+# GeckoDraw user database
+/data/*
+!/data/.gitkeep
+
 # misc
 .DS_Store
 *.pem

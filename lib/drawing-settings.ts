@@ -1,18 +1,18 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
-import { createIndexedDBSetting } from "@/lib/indexeddb-setting"
+import { createRemoteSetting } from "@/lib/remote-setting"
 
 export const DEFAULT_PEN_SMOOTHING = 5
 export const DEFAULT_SHOW_SAVE_STATUS = false
 
-const penSmoothingSetting = createIndexedDBSetting<number>(
+const penSmoothingSetting = createRemoteSetting<number>(
   "draw.pen-smoothing",
   DEFAULT_PEN_SMOOTHING,
   (value): value is number => Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 10
 )
 
-const showSaveStatusSetting = createIndexedDBSetting<boolean>(
+const showSaveStatusSetting = createRemoteSetting<boolean>(
   "draw.show-save-status",
   DEFAULT_SHOW_SAVE_STATUS,
   (value): value is boolean => typeof value === "boolean"

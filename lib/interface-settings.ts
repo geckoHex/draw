@@ -1,7 +1,7 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
-import { createIndexedDBSetting } from "@/lib/indexeddb-setting"
+import { createRemoteSetting } from "@/lib/remote-setting"
 
 export type ThemePreference = "system" | "light" | "dark"
 export type ResolvedTheme = "light" | "dark"
@@ -15,13 +15,13 @@ function isThemePreference(value: unknown): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark"
 }
 
-const themeSetting = createIndexedDBSetting<ThemePreference>(
+const themeSetting = createRemoteSetting<ThemePreference>(
   "draw.theme",
   DEFAULT_THEME,
   isThemePreference
 )
 
-const darkCanvasSetting = createIndexedDBSetting<boolean>(
+const darkCanvasSetting = createRemoteSetting<boolean>(
   "draw.dark-canvas",
   DEFAULT_DARK_CANVAS,
   (value): value is boolean => typeof value === "boolean"

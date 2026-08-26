@@ -24,7 +24,7 @@ import {
   getBoardsByFolder,
   type Board,
   type Folder
-} from "@/lib/db";
+} from "@/lib/data-client";
 import { generateBoardName } from "@/lib/name-generator";
 import { BoardPreview } from "@/components/board-preview";
 import { FolderCard } from "@/components/folder-card";
