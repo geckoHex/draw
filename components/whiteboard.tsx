@@ -23,6 +23,7 @@ interface WhiteboardProps {
 export function Whiteboard({ boardId }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const activeSavesRef = useRef(0)
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
@@ -30,7 +31,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [eraserSize, setEraserSize] = useState(20)
   const [color, setColor] = useState('#000000')
   const [title, setTitle] = useState('Untitled Board')
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle')
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
+  const [loadedBoardId, setLoadedBoardId] = useState<string | null>(null)
   const penSmoothing = usePenSmoothing()
   
   const [strokes, setStrokes] = useState<Stroke[]>([])
@@ -43,9 +45,13 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
   // Load board data
   useEffect(() => {
+    let cancelled = false
+
     const loadBoard = async () => {
       try {
         const board = await getBoard(boardId)
+        if (cancelled) return
+
         if (board) {
           setTitle(board.title)
           setStrokes(board.strokes)
@@ -64,14 +70,23 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         }
       } catch (error) {
         console.error("Failed to load board:", error)
+      } finally {
+        if (!cancelled) setLoadedBoardId(boardId)
       }
     }
     loadBoard()
+
+    return () => {
+      cancelled = true
+    }
   }, [boardId])
 
-  // Save board data (debounced or on change)
+  // Save as soon as a completed stroke or another board value changes.
   useEffect(() => {
+    if (loadedBoardId !== boardId) return
+
     const save = async () => {
+      activeSavesRef.current += 1
       setSaveStatus('saving')
 
       try {
@@ -84,17 +99,16 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           strokes,
           folderId: board?.folderId || null
         })
-        setSaveStatus('saved')
-        setTimeout(() => setSaveStatus('idle'), 2000)
       } catch (error) {
         console.error("Failed to save board:", error)
-        setSaveStatus('idle')
+      } finally {
+        activeSavesRef.current -= 1
+        if (activeSavesRef.current === 0) setSaveStatus('saved')
       }
     }
-    
-    const timeoutId = setTimeout(save, 3000)
-    return () => clearTimeout(timeoutId)
-  }, [boardId, title, strokes])
+
+    void save()
+  }, [boardId, loadedBoardId, title, strokes])
 
   const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (stroke.points.length < 1) return
@@ -430,23 +444,18 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           </div>
         </div>
         
-        <div className="mt-auto flex items-center justify-center text-xs text-muted-foreground h-6 relative overflow-hidden">
-            <div
-              className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
-                saveStatus === 'saving' ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-              }`}
-            >
-                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                <span>Saving...</span>
-            </div>
-            <div
-              className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
-                saveStatus === 'saved' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-              }`}
-            >
-                <Check className="h-3 w-3 mr-2" />
-                <span>Saved</span>
-            </div>
+        <div className="mt-auto flex h-6 items-center justify-center text-xs text-muted-foreground">
+          {saveStatus === 'saving' ? (
+            <>
+              <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Check className="h-3 w-3 mr-2" />
+              <span>Saved</span>
+            </>
+          )}
         </div>
       </Card>
 
