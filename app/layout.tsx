@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
-import BetaBanner from "../components/beta-banner";
 
 const satoshi = localFont({
   src: [
@@ -50,7 +49,6 @@ export default function RootLayout({
       <body
         className={`${satoshi.variable} ${geistMono.variable} antialiased`}
       >
-        <BetaBanner />
         {children}
       </body>
     </html>
