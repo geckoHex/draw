@@ -21,7 +21,20 @@ export interface CanvasImage {
   rotation: number;
 }
 
-export type CanvasElement = Stroke | CanvasImage;
+export type ShapeKind = "rectangle" | "circle" | "triangle" | "line";
+export type ShapeFill = "transparent" | "opaque" | "filled";
+
+export interface CanvasShape {
+  type: "shape";
+  shape: ShapeKind;
+  start: Point;
+  end: Point;
+  color: string;
+  size: number;
+  fill: ShapeFill;
+}
+
+export type CanvasElement = Stroke | CanvasImage | CanvasShape;
 
 export interface Board {
   id: string;

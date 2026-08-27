@@ -132,4 +132,4 @@ export function getBoardsByFolder(folderId: string): Promise<Board[]> {
   return request<Board[]>(`/api/boards?${query}`)
 }
 
-export type { Board, CanvasElement, CanvasImage, Folder, Point, Stroke } from "@/lib/data-types"
+export type { Board, CanvasElement, CanvasImage, CanvasShape, Folder, Point, ShapeFill, ShapeKind, Stroke } from "@/lib/data-types"

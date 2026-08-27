@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
-import { Eraser, Pen, MousePointer2, Trash2, Download, Undo, Redo, ChevronLeft, Check, Loader2 } from 'lucide-react'
+import { Circle, Eraser, Minus, PaintBucket, Pen, MousePointer2, RectangleHorizontal, Triangle, Trash2, Download, Undo, Redo, ChevronLeft, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Card } from '@/components/ui/card'
@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { saveBoard, getBoard, type CanvasElement, type CanvasImage, type Stroke, type Point } from '@/lib/data-client'
+import { saveBoard, getBoard, type CanvasElement, type CanvasImage, type CanvasShape, type ShapeFill, type ShapeKind, type Stroke, type Point } from '@/lib/data-client'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
 import { getSmoothingFactor, usePenSmoothing, useShowSaveStatus } from '@/lib/drawing-settings'
@@ -67,6 +67,10 @@ function distanceToSegment(point: Point, start: Point, end: Point) {
 
 function isCanvasImage(element: CanvasElement): element is CanvasImage {
   return element.type === 'image'
+}
+
+function isCanvasShape(element: CanvasElement): element is CanvasShape {
+  return element.type === 'shape'
 }
 
 function rotatePoint(point: Point, center: Point, angle: number): Point {
@@ -127,6 +131,14 @@ function hitTestElement(elements: CanvasElement[], point: Point) {
       }
       continue
     }
+    if (isCanvasShape(stroke)) {
+      const left = Math.min(stroke.start.x, stroke.end.x) - 8
+      const right = Math.max(stroke.start.x, stroke.end.x) + 8
+      const top = Math.min(stroke.start.y, stroke.end.y) - 8
+      const bottom = Math.max(stroke.start.y, stroke.end.y) + 8
+      if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) return strokeIndex
+      continue
+    }
     const hitTolerance = Math.max(8, stroke.size / 2 + 5)
     let isHit = false
 
@@ -156,6 +168,9 @@ function translateElement(stroke: CanvasElement, offset: Point): CanvasElement {
   if (isCanvasImage(stroke)) {
     return { ...stroke, x: stroke.x + offset.x, y: stroke.y + offset.y }
   }
+  if (isCanvasShape(stroke)) {
+    return { ...stroke, start: { x: stroke.start.x + offset.x, y: stroke.start.y + offset.y }, end: { x: stroke.end.x + offset.x, y: stroke.end.y + offset.y } }
+  }
   return {
     ...stroke,
     points: stroke.points.map(point => ({
@@ -167,6 +182,7 @@ function translateElement(stroke: CanvasElement, offset: Point): CanvasElement {
 
 function cloneElement(stroke: CanvasElement): CanvasElement {
   if (isCanvasImage(stroke)) return { ...stroke }
+  if (isCanvasShape(stroke)) return { ...stroke, start: { ...stroke.start }, end: { ...stroke.end } }
   return {
     ...stroke,
     points: stroke.points.map(point => ({ ...point }))
@@ -197,7 +213,7 @@ async function normalizePastedImage(file: File) {
   }
 }
 
-type Tool = 'cursor' | 'pen' | 'eraser'
+type Tool = 'cursor' | 'pen' | 'eraser' | 'shape' | 'bucket'
 
 type CanvasAction =
   | { type: 'add'; index: number; stroke: CanvasElement }
@@ -259,6 +275,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [brushSize, setBrushSize] = useState([5])
   const [penSize, setPenSize] = useState(5)
   const [eraserSize, setEraserSize] = useState(20)
+  const [shapeKind, setShapeKind] = useState<ShapeKind>('rectangle')
+  const [shapeFill, setShapeFill] = useState<ShapeFill>('transparent')
   const [color, setColor] = useState('#000000')
   const [title, setTitle] = useState('Untitled Board')
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved')
@@ -277,6 +295,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [undoStack, setUndoStack] = useState<CanvasAction[]>([])
   const [redoStack, setRedoStack] = useState<CanvasAction[]>([])
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
+  const [currentShape, setCurrentShape] = useState<CanvasShape | null>(null)
   const [selectedStrokeIndex, setSelectedStrokeIndex] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 })
   const [transformPreview, setTransformPreview] = useState<CanvasElement | null>(null)
@@ -399,13 +418,46 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     ctx.restore()
   }, [])
 
+  const drawShape = useCallback((ctx: CanvasRenderingContext2D, shape: CanvasShape) => {
+    const left = Math.min(shape.start.x, shape.end.x)
+    const top = Math.min(shape.start.y, shape.end.y)
+    const width = Math.abs(shape.end.x - shape.start.x)
+    const height = Math.abs(shape.end.y - shape.start.y)
+    ctx.save()
+    ctx.beginPath()
+    if (shape.shape === 'rectangle') ctx.rect(left, top, width, height)
+    if (shape.shape === 'circle') ctx.ellipse(left + width / 2, top + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2)
+    if (shape.shape === 'triangle') {
+      ctx.moveTo(left + width / 2, top)
+      ctx.lineTo(left + width, top + height)
+      ctx.lineTo(left, top + height)
+      ctx.closePath()
+    }
+    if (shape.shape === 'line') {
+      ctx.moveTo(shape.start.x, shape.start.y)
+      ctx.lineTo(shape.end.x, shape.end.y)
+    }
+    if (shape.fill !== 'transparent' && shape.shape !== 'line') {
+      ctx.fillStyle = shape.fill === 'filled' ? shape.color : canvasColor
+      ctx.fill()
+    }
+    ctx.strokeStyle = shape.color
+    ctx.lineWidth = shape.size
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+    ctx.restore()
+  }, [canvasColor])
+
   const drawElement = useCallback((ctx: CanvasRenderingContext2D, element: CanvasElement, offset: Point = { x: 0, y: 0 }) => {
     if (isCanvasImage(element)) {
       drawImage(ctx, offset.x || offset.y ? translateElement(element, offset) as CanvasImage : element)
+    } else if (isCanvasShape(element)) {
+      drawShape(ctx, offset.x || offset.y ? translateElement(element, offset) as CanvasShape : element)
     } else {
       drawStroke(ctx, element, offset.x, offset.y)
     }
-  }, [drawImage, drawStroke])
+  }, [drawImage, drawShape, drawStroke])
 
   const drawStrokeSelection = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke, offset: Point) => {
     if (stroke.points.length < 1) return
@@ -486,7 +538,9 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     ctx.fillRect(0, 0, rect.width, rect.height)
 
     // Draw all saved canvas elements.
-    strokes.forEach((stroke, index) => {
+    const orderedElements = strokes.map((element, index) => ({ element, index }))
+      .sort((a, b) => Number(!isCanvasShape(a.element) && !isCanvasImage(a.element)) - Number(!isCanvasShape(b.element) && !isCanvasImage(b.element)))
+    orderedElements.forEach(({ element: stroke, index }) => {
       if (index === selectedStrokeIndex && isDrawing && tool === 'cursor') {
         if (transformPreview) {
           drawElement(ctx, transformPreview)
@@ -502,6 +556,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     if (currentStroke) {
       drawStroke(ctx, currentStroke)
     }
+    if (currentShape) drawShape(ctx, currentShape)
 
     if (includeSelection && selectedStrokeIndex !== null) {
       const selectedStroke = strokes[selectedStrokeIndex]
@@ -513,13 +568,20 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
               : translateElement(selectedStroke, dragOffset) as CanvasImage
             : selectedStroke
           drawImageSelection(ctx, selectedPreview)
+        } else if (isCanvasShape(selectedStroke)) {
+          const offset = isDrawing && tool === 'cursor' ? dragOffset : { x: 0, y: 0 }
+          ctx.save()
+          ctx.shadowColor = SELECTION_COLOR
+          ctx.shadowBlur = 6
+          drawShape(ctx, translateElement(selectedStroke, offset) as CanvasShape)
+          ctx.restore()
         } else {
           const offset = isDrawing && tool === 'cursor' ? dragOffset : { x: 0, y: 0 }
           drawStrokeSelection(ctx, selectedStroke, offset)
         }
       }
     }
-  }, [strokes, currentStroke, canvasColor, drawElement, drawImageSelection, drawStroke, drawStrokeSelection, selectedStrokeIndex, isDrawing, tool, dragOffset, transformPreview])
+  }, [strokes, currentStroke, currentShape, canvasColor, drawElement, drawImageSelection, drawShape, drawStroke, drawStrokeSelection, selectedStrokeIndex, isDrawing, tool, dragOffset, transformPreview])
 
   useEffect(() => {
     renderCanvasRef.current = renderCanvas
@@ -565,6 +627,46 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     const coords = getCoordinates(e)
     if (!coords) return
 
+    if (tool === 'bucket') {
+      const canvas = canvasRef.current
+      const ctx = canvas?.getContext('2d')
+      if (!canvas || !ctx) return
+      const dpr = window.devicePixelRatio || 1
+      const image = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const x = Math.max(0, Math.min(canvas.width - 1, Math.floor(coords.x * dpr)))
+      const y = Math.max(0, Math.min(canvas.height - 1, Math.floor(coords.y * dpr)))
+      const start = (y * canvas.width + x) * 4
+      const target = Array.from(image.data.slice(start, start + 4))
+      const fill = effectiveColor.match(/[a-f\d]{2}/gi)?.map(value => parseInt(value, 16)) ?? [0, 0, 0]
+      const tolerance = 45
+      if (Math.abs(target[0] - fill[0]) + Math.abs(target[1] - fill[1]) + Math.abs(target[2] - fill[2]) > 6) {
+        const stack = [x, y]
+        const visited = new Uint8Array(canvas.width * canvas.height)
+        while (stack.length) {
+          const cy = stack.pop()!
+          const cx = stack.pop()!
+          const pixel = cy * canvas.width + cx
+          if (visited[pixel]) continue
+          visited[pixel] = 1
+          const offset = pixel * 4
+          const difference = Math.abs(image.data[offset] - target[0]) + Math.abs(image.data[offset + 1] - target[1]) + Math.abs(image.data[offset + 2] - target[2])
+          if (difference > tolerance) continue
+          image.data[offset] = fill[0]; image.data[offset + 1] = fill[1]; image.data[offset + 2] = fill[2]; image.data[offset + 3] = 255
+          if (cx > 0) stack.push(cx - 1, cy)
+          if (cx + 1 < canvas.width) stack.push(cx + 1, cy)
+          if (cy > 0) stack.push(cx, cy - 1)
+          if (cy + 1 < canvas.height) stack.push(cx, cy + 1)
+        }
+        ctx.putImageData(image, 0, 0)
+        const bucketLayer: CanvasImage = { type: 'image', src: canvas.toDataURL('image/png'), x: 0, y: 0, width: canvas.width / dpr, height: canvas.height / dpr, rotation: 0 }
+        const index = strokes.length
+        setStrokes(previous => [...previous, bucketLayer])
+        setUndoStack(previous => [...previous, { type: 'add', index, stroke: bucketLayer }])
+        setRedoStack([])
+      }
+      return
+    }
+
     if (tool === 'cursor') {
       const selectedElement = selectedStrokeIndex === null ? null : strokes[selectedStrokeIndex]
       const imageHandle = selectedElement && isCanvasImage(selectedElement)
@@ -600,6 +702,12 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       setDragOffset({ x: 0, y: 0 })
       transformPreviewRef.current = null
       setTransformPreview(null)
+      return
+    }
+
+    if (tool === 'shape') {
+      setIsDrawing(true)
+      setCurrentShape({ type: 'shape', shape: shapeKind, start: coords, end: coords, color: effectiveColor, size: brushSize[0], fill: shapeFill })
       return
     }
 
@@ -681,6 +789,23 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       return
     }
 
+    if (tool === 'shape' && currentShape) {
+      let end = coords
+      const shift = 'shiftKey' in e && e.shiftKey
+      if (shift && shapeKind === 'line') {
+        const dx = coords.x - currentShape.start.x
+        const dy = coords.y - currentShape.start.y
+        end = Math.abs(dx) >= Math.abs(dy) ? { x: coords.x, y: currentShape.start.y } : { x: currentShape.start.x, y: coords.y }
+      } else if (shift) {
+        const dx = coords.x - currentShape.start.x
+        const dy = coords.y - currentShape.start.y
+        const side = Math.max(Math.abs(dx), Math.abs(dy))
+        end = { x: currentShape.start.x + Math.sign(dx || 1) * side, y: currentShape.start.y + Math.sign(dy || 1) * side }
+      }
+      setCurrentShape(previous => previous ? { ...previous, end } : null)
+      return
+    }
+
     if (!currentStroke) return
 
     setCurrentStroke(prev => {
@@ -741,6 +866,16 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         }])
         setRedoStack([])
       }
+      return
+    }
+
+    if (tool === 'shape' && currentShape) {
+      setIsDrawing(false)
+      const index = strokes.length
+      setStrokes(previous => [...previous, currentShape])
+      setUndoStack(previous => [...previous, { type: 'add', index, stroke: currentShape }])
+      setRedoStack([])
+      setCurrentShape(null)
       return
     }
 
@@ -1099,7 +1234,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       )}
 
       {/* Sidebar */}
-      <Card className="m-4 flex h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-4 rounded-2xl border border-border bg-card/88 p-4 shadow-lg backdrop-blur-xl z-10">
+      <Card className="m-4 flex h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card/88 p-4 shadow-lg backdrop-blur-xl z-10">
         <div className="space-y-4">
             <div className="flex flex-col gap-2">
                 <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="self-start -ml-2 text-muted-foreground shadow-none bg-transparent">
@@ -1118,29 +1253,17 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         <Separator />
 
         <div className="space-y-2">
-          <h2 className="text-sm font-medium">Tools</h2>
-          <div className="relative flex p-1 rounded-lg bg-muted/50">
-            {/* Animated slider background */}
-            <div
-              className="absolute left-1 top-1 bottom-1 bg-background rounded-md shadow-sm transition-transform duration-300 ease-out"
-              style={{
-                width: 'calc(33.333333% - 0.333333rem)',
-                transform: tool === 'cursor'
-                  ? 'translateX(0)'
-                  : tool === 'pen'
-                    ? 'translateX(calc(100% + 0.25rem))'
-                    : 'translateX(calc(200% + 0.5rem))'
-              }}
-            />
-            <div className="grid grid-cols-3 w-full gap-1 relative z-10">
+          <h2 className="text-sm font-medium">Modes</h2>
+          <div className="flex p-1 rounded-lg bg-muted/50">
+            <div className="grid grid-cols-4 w-full gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setTool('cursor')}
                   aria-pressed={tool === 'cursor'}
-                  className={`px-1 text-xs bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'cursor' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-1 text-xs shadow-none ${tool === 'cursor' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}
                 >
-                    <MousePointer2 className="h-4 w-4" /> Cursor
+                    <MousePointer2 className="h-4 w-4" /> Select
                 </Button>
                 <Button
                   variant="ghost"
@@ -1151,7 +1274,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
                     setSelectedStrokeIndex(null)
                   }}
                   aria-pressed={tool === 'pen'}
-                  className={`px-1 text-xs bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'pen' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-1 text-xs shadow-none ${tool === 'pen' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}
                 >
                     <Pen className="h-4 w-4" /> Pen
                 </Button>
@@ -1164,11 +1287,32 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
                     setSelectedStrokeIndex(null)
                   }}
                   aria-pressed={tool === 'eraser'}
-                  className={`px-1 text-xs bg-transparent shadow-none hover:bg-transparent dark:hover:bg-transparent ${tool === 'eraser' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-1 text-xs shadow-none ${tool === 'eraser' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}
                 >
                     <Eraser className="h-4 w-4" /> Eraser
                 </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setTool('bucket'); setSelectedStrokeIndex(null) }} aria-pressed={tool === 'bucket'} title="Paint bucket" className={`px-1 text-xs shadow-none ${tool === 'bucket' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}>
+                  <PaintBucket className="h-4 w-4" /> Fill
+                </Button>
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium">Drawing tools</h2>
+          <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted/50 p-1">
+            {([
+              ['rectangle', RectangleHorizontal], ['circle', Circle], ['triangle', Triangle], ['line', Minus],
+            ] as const).map(([kind, Icon]) => (
+              <Button key={kind} variant="ghost" size="icon" title={kind[0].toUpperCase() + kind.slice(1)} aria-label={kind} aria-pressed={tool === 'shape' && shapeKind === kind} onClick={() => { setShapeKind(kind); setTool('shape'); setSelectedStrokeIndex(null) }} className={`h-8 w-full shadow-none ${tool === 'shape' && shapeKind === kind ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}>
+                <Icon className="h-4 w-4" />
+              </Button>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {(['transparent', 'opaque', 'filled'] as ShapeFill[]).map(fill => (
+              <Button key={fill} variant={shapeFill === fill ? 'secondary' : 'ghost'} size="sm" onClick={() => setShapeFill(fill)} className="h-8 px-1 text-xs capitalize shadow-none">{fill}</Button>
+            ))}
           </div>
         </div>
 
