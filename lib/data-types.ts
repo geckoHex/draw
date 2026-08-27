@@ -22,7 +22,7 @@ export interface CanvasImage {
 }
 
 export type ShapeKind = "rectangle" | "circle" | "triangle" | "line";
-export type ShapeFill = "transparent" | "opaque" | "filled";
+export type ShapeFill = "transparent" | "translucent" | "filled";
 
 export interface CanvasShape {
   type: "shape";

@@ -439,8 +439,10 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       ctx.lineTo(shape.end.x, shape.end.y)
     }
     if (shape.fill !== 'transparent' && shape.shape !== 'line') {
-      ctx.fillStyle = shape.fill === 'filled' ? shape.color : canvasColor
+      ctx.fillStyle = shape.color
+      ctx.globalAlpha = shape.fill === 'filled' ? 1 : 0.5
       ctx.fill()
+      ctx.globalAlpha = 1
     }
     ctx.strokeStyle = shape.color
     ctx.lineWidth = shape.size
@@ -448,7 +450,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     ctx.lineJoin = 'round'
     ctx.stroke()
     ctx.restore()
-  }, [canvasColor])
+  }, [])
 
   const drawElement = useCallback((ctx: CanvasRenderingContext2D, element: CanvasElement, offset: Point = { x: 0, y: 0 }) => {
     if (isCanvasImage(element)) {
@@ -1318,7 +1320,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
               ))}
             </div>
             <div className="grid grid-cols-3 gap-1">
-              {(['transparent', 'opaque', 'filled'] as ShapeFill[]).map(fill => (
+              {(['transparent', 'translucent', 'filled'] as ShapeFill[]).map(fill => (
                 <Button key={fill} variant="ghost" size="sm" aria-pressed={shapeFill === fill} onClick={() => setShapeFill(fill)} className={`h-8 px-1 text-xs capitalize shadow-none ${shapeFill === fill ? SELECTED_CONTROL_CLASS : 'bg-transparent text-muted-foreground'}`}>{fill}</Button>
               ))}
             </div>

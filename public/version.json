@@ -1,5 +1,5 @@
 {
-    "version": "3.7.4",
-    "commit_message": "Resolve version conflict for sidebar contrast and LAN creation fixes",
+    "version": "3.8.1",
+    "commit_message": "Resolve version conflict for translucent fills, sidebar contrast, and LAN creation fixes",
     "authored_by": "Codex"
 }

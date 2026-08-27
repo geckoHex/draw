@@ -68,9 +68,10 @@ function parseImage(value: Record<string, unknown>): CanvasImage {
 
 function parseShape(value: Record<string, unknown>): CanvasShape {
   const shapes = ["rectangle", "circle", "triangle", "line"] as const
-  const fills = ["transparent", "opaque", "filled"] as const
+  const fills = ["transparent", "translucent", "filled"] as const
+  const fill = value.fill === "opaque" ? "translucent" : value.fill
   if (!shapes.includes(value.shape as typeof shapes[number])
-    || !fills.includes(value.fill as typeof fills[number])
+    || !fills.includes(fill as typeof fills[number])
     || typeof value.color !== "string" || value.color.length > 100
     || !Number.isFinite(value.size) || Number(value.size) <= 0) {
     throw new RequestValidationError("The board contains an invalid shape.")
@@ -78,7 +79,7 @@ function parseShape(value: Record<string, unknown>): CanvasShape {
   return {
     type: "shape", shape: value.shape as CanvasShape["shape"],
     start: parsePoint(value.start), end: parsePoint(value.end),
-    color: value.color, size: Number(value.size), fill: value.fill as CanvasShape["fill"],
+    color: value.color, size: Number(value.size), fill: fill as CanvasShape["fill"],
   }
 }
 
