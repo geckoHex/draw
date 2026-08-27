@@ -4,18 +4,31 @@ export interface Point {
 }
 
 export interface Stroke {
+  type?: "stroke";
   points: Point[];
   color: string;
   size: number;
   tool: "pen" | "eraser";
 }
 
+export interface CanvasImage {
+  type: "image";
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+}
+
+export type CanvasElement = Stroke | CanvasImage;
+
 export interface Board {
   id: string;
   title: string;
   createdAt: number;
   updatedAt: number;
-  strokes: Stroke[];
+  strokes: CanvasElement[];
   folderId: string | null;
 }
 

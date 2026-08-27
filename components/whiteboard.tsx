@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/data-client'
+import { saveBoard, getBoard, type CanvasElement, type CanvasImage, type Stroke, type Point } from '@/lib/data-client'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
 import { getSmoothingFactor, usePenSmoothing, useShowSaveStatus } from '@/lib/drawing-settings'
@@ -19,6 +19,10 @@ const LIGHT_CANVAS_COLOR = '#ffffff'
 const DARK_CANVAS_COLOR = '#111318'
 const CARDINAL_SNAP_THRESHOLD = 5 * Math.PI / 180
 const SELECTION_COLOR = '#3b82f6'
+const IMAGE_HANDLE_RADIUS = 7
+const IMAGE_ROTATION_HANDLE_OFFSET = 30
+const MIN_IMAGE_SIZE = 24
+const MAX_PASTED_IMAGE_DIMENSION = 2400
 
 function snapToCardinalAngle(start: Point, end: Point): Point {
   const deltaX = end.x - start.x
@@ -61,9 +65,68 @@ function distanceToSegment(point: Point, start: Point, end: Point) {
   return Math.hypot(point.x - closestX, point.y - closestY)
 }
 
-function hitTestStroke(strokes: Stroke[], point: Point) {
-  for (let strokeIndex = strokes.length - 1; strokeIndex >= 0; strokeIndex -= 1) {
-    const stroke = strokes[strokeIndex]
+function isCanvasImage(element: CanvasElement): element is CanvasImage {
+  return element.type === 'image'
+}
+
+function rotatePoint(point: Point, center: Point, angle: number): Point {
+  const cosine = Math.cos(angle)
+  const sine = Math.sin(angle)
+  const deltaX = point.x - center.x
+  const deltaY = point.y - center.y
+  return {
+    x: center.x + deltaX * cosine - deltaY * sine,
+    y: center.y + deltaX * sine + deltaY * cosine
+  }
+}
+
+function imageCenter(image: CanvasImage): Point {
+  return { x: image.x + image.width / 2, y: image.y + image.height / 2 }
+}
+
+function toImageLocalPoint(image: CanvasImage, point: Point): Point {
+  const center = imageCenter(image)
+  const unrotated = rotatePoint(point, center, -image.rotation)
+  return { x: unrotated.x - center.x, y: unrotated.y - center.y }
+}
+
+function getImageHandlePoints(image: CanvasImage) {
+  const center = imageCenter(image)
+  const halfWidth = image.width / 2
+  const halfHeight = image.height / 2
+  const point = (x: number, y: number) => rotatePoint({ x: center.x + x, y: center.y + y }, center, image.rotation)
+  return {
+    nw: point(-halfWidth, -halfHeight),
+    ne: point(halfWidth, -halfHeight),
+    se: point(halfWidth, halfHeight),
+    sw: point(-halfWidth, halfHeight),
+    rotate: point(0, -halfHeight - IMAGE_ROTATION_HANDLE_OFFSET)
+  }
+}
+
+type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw'
+
+function hitTestImageHandle(image: CanvasImage, point: Point): ResizeHandle | 'rotate' | null {
+  const handles = getImageHandlePoints(image)
+  for (const handle of ['rotate', 'nw', 'ne', 'se', 'sw'] as const) {
+    const handlePoint = handles[handle]
+    if (Math.hypot(point.x - handlePoint.x, point.y - handlePoint.y) <= IMAGE_HANDLE_RADIUS + 14) {
+      return handle
+    }
+  }
+  return null
+}
+
+function hitTestElement(elements: CanvasElement[], point: Point) {
+  for (let strokeIndex = elements.length - 1; strokeIndex >= 0; strokeIndex -= 1) {
+    const stroke = elements[strokeIndex]
+    if (isCanvasImage(stroke)) {
+      const local = toImageLocalPoint(stroke, point)
+      if (Math.abs(local.x) <= stroke.width / 2 && Math.abs(local.y) <= stroke.height / 2) {
+        return strokeIndex
+      }
+      continue
+    }
     const hitTolerance = Math.max(8, stroke.size / 2 + 5)
     let isHit = false
 
@@ -89,7 +152,10 @@ function hitTestStroke(strokes: Stroke[], point: Point) {
   return null
 }
 
-function translateStroke(stroke: Stroke, offset: Point): Stroke {
+function translateElement(stroke: CanvasElement, offset: Point): CanvasElement {
+  if (isCanvasImage(stroke)) {
+    return { ...stroke, x: stroke.x + offset.x, y: stroke.y + offset.y }
+  }
   return {
     ...stroke,
     points: stroke.points.map(point => ({
@@ -99,19 +165,44 @@ function translateStroke(stroke: Stroke, offset: Point): Stroke {
   }
 }
 
-function cloneStroke(stroke: Stroke): Stroke {
+function cloneElement(stroke: CanvasElement): CanvasElement {
+  if (isCanvasImage(stroke)) return { ...stroke }
   return {
     ...stroke,
     points: stroke.points.map(point => ({ ...point }))
   }
 }
 
+async function normalizePastedImage(file: File) {
+  const objectUrl = URL.createObjectURL(file)
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const candidate = new Image()
+      candidate.onload = () => resolve(candidate)
+      candidate.onerror = () => reject(new Error('The pasted image could not be decoded.'))
+      candidate.src = objectUrl
+    })
+    const scale = Math.min(1, MAX_PASTED_IMAGE_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight))
+    const width = Math.max(1, Math.round(image.naturalWidth * scale))
+    const height = Math.max(1, Math.round(image.naturalHeight * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('The pasted image could not be processed.')
+    context.drawImage(image, 0, 0, width, height)
+    return { src: canvas.toDataURL('image/webp', 0.9), width, height }
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
 type Tool = 'cursor' | 'pen' | 'eraser'
 
 type CanvasAction =
-  | { type: 'add'; index: number; stroke: Stroke }
-  | { type: 'delete'; index: number; stroke: Stroke }
-  | { type: 'move'; index: number; before: Stroke; after: Stroke }
+  | { type: 'add'; index: number; stroke: CanvasElement }
+  | { type: 'delete'; index: number; stroke: CanvasElement }
+  | { type: 'transform'; index: number; before: CanvasElement; after: CanvasElement }
 
 interface CanvasContextMenu {
   x: number
@@ -119,7 +210,7 @@ interface CanvasContextMenu {
   strokeIndex: number | null
 }
 
-function applyCanvasAction(strokes: Stroke[], action: CanvasAction, direction: 'undo' | 'redo') {
+function applyCanvasAction(strokes: CanvasElement[], action: CanvasAction, direction: 'undo' | 'redo') {
   const nextStrokes = [...strokes]
 
   if (action.type === 'add') {
@@ -152,9 +243,16 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const isStraightLineRef = useRef(false)
   const draggedStrokeIndexRef = useRef<number | null>(null)
   const dragStartRef = useRef<Point | null>(null)
-  const draggedStrokeRef = useRef<Stroke | null>(null)
+  const draggedStrokeRef = useRef<CanvasElement | null>(null)
   const dragOffsetRef = useRef<Point>({ x: 0, y: 0 })
-  const copiedStrokeRef = useRef<Stroke | null>(null)
+  const transformModeRef = useRef<'move' | 'resize' | 'rotate'>('move')
+  const resizeHandleRef = useRef<ResizeHandle | null>(null)
+  const transformPreviewRef = useRef<CanvasElement | null>(null)
+  const copiedStrokeRef = useRef<CanvasElement | null>(null)
+  const internalCopyActiveRef = useRef(false)
+  const imageCacheRef = useRef(new Map<string, HTMLImageElement>())
+  const renderCanvasRef = useRef<(includeSelection?: boolean) => void>(() => {})
+  const canvasElementsRef = useRef<CanvasElement[]>([])
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
@@ -175,18 +273,23 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       ? '#000000'
       : color
   
-  const [strokes, setStrokes] = useState<Stroke[]>([])
+  const [strokes, setStrokes] = useState<CanvasElement[]>([])
   const [undoStack, setUndoStack] = useState<CanvasAction[]>([])
   const [redoStack, setRedoStack] = useState<CanvasAction[]>([])
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [selectedStrokeIndex, setSelectedStrokeIndex] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 })
+  const [transformPreview, setTransformPreview] = useState<CanvasElement | null>(null)
   const [contextMenu, setContextMenu] = useState<CanvasContextMenu | null>(null)
   const [hasCopiedStroke, setHasCopiedStroke] = useState(false)
   
   const [showClearModal, setShowClearModal] = useState(false)
   
   const router = useRouter()
+
+  useEffect(() => {
+    canvasElementsRef.current = strokes
+  }, [strokes])
 
   // Load board data
   useEffect(() => {
@@ -278,7 +381,33 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     ctx.stroke()
   }, [canvasColor])
 
-  const drawSelection = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke, offset: Point) => {
+  const drawImage = useCallback((ctx: CanvasRenderingContext2D, image: CanvasImage) => {
+    let bitmap = imageCacheRef.current.get(image.src)
+    if (!bitmap) {
+      bitmap = new Image()
+      bitmap.onload = () => renderCanvasRef.current()
+      bitmap.src = image.src
+      imageCacheRef.current.set(image.src, bitmap)
+    }
+    if (!bitmap.complete || bitmap.naturalWidth === 0) return
+
+    const center = imageCenter(image)
+    ctx.save()
+    ctx.translate(center.x, center.y)
+    ctx.rotate(image.rotation)
+    ctx.drawImage(bitmap, -image.width / 2, -image.height / 2, image.width, image.height)
+    ctx.restore()
+  }, [])
+
+  const drawElement = useCallback((ctx: CanvasRenderingContext2D, element: CanvasElement, offset: Point = { x: 0, y: 0 }) => {
+    if (isCanvasImage(element)) {
+      drawImage(ctx, offset.x || offset.y ? translateElement(element, offset) as CanvasImage : element)
+    } else {
+      drawStroke(ctx, element, offset.x, offset.y)
+    }
+  }, [drawImage, drawStroke])
+
+  const drawStrokeSelection = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke, offset: Point) => {
     if (stroke.points.length < 1) return
 
     ctx.save()
@@ -297,6 +426,39 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
     drawStroke(ctx, stroke, offset.x, offset.y)
   }, [drawStroke])
+
+  const drawImageSelection = useCallback((ctx: CanvasRenderingContext2D, image: CanvasImage) => {
+    const center = imageCenter(image)
+    const handles = getImageHandlePoints(image)
+    const topCenter = rotatePoint(
+      { x: center.x, y: image.y },
+      center,
+      image.rotation
+    )
+
+    ctx.save()
+    ctx.strokeStyle = SELECTION_COLOR
+    ctx.fillStyle = '#ffffff'
+    ctx.lineWidth = 2
+    ctx.save()
+    ctx.translate(center.x, center.y)
+    ctx.rotate(image.rotation)
+    ctx.strokeRect(-image.width / 2, -image.height / 2, image.width, image.height)
+    ctx.restore()
+
+    ctx.beginPath()
+    ctx.moveTo(topCenter.x, topCenter.y)
+    ctx.lineTo(handles.rotate.x, handles.rotate.y)
+    ctx.stroke()
+
+    for (const point of Object.values(handles)) {
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, IMAGE_HANDLE_RADIUS, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+    }
+    ctx.restore()
+  }, [])
 
   const renderCanvas = useCallback((includeSelection = true) => {
     const canvas = canvasRef.current
@@ -323,12 +485,16 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     ctx.fillStyle = canvasColor
     ctx.fillRect(0, 0, rect.width, rect.height)
 
-    // Draw all saved strokes
+    // Draw all saved canvas elements.
     strokes.forEach((stroke, index) => {
       if (index === selectedStrokeIndex && isDrawing && tool === 'cursor') {
-        drawStroke(ctx, stroke, dragOffset.x, dragOffset.y)
+        if (transformPreview) {
+          drawElement(ctx, transformPreview)
+        } else {
+          drawElement(ctx, stroke, dragOffset)
+        }
       } else {
-        drawStroke(ctx, stroke)
+        drawElement(ctx, stroke)
       }
     })
 
@@ -340,11 +506,24 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     if (includeSelection && selectedStrokeIndex !== null) {
       const selectedStroke = strokes[selectedStrokeIndex]
       if (selectedStroke) {
-        const offset = isDrawing && tool === 'cursor' ? dragOffset : { x: 0, y: 0 }
-        drawSelection(ctx, selectedStroke, offset)
+        if (isCanvasImage(selectedStroke)) {
+          const selectedPreview = isDrawing && tool === 'cursor'
+            ? transformPreview && isCanvasImage(transformPreview)
+              ? transformPreview
+              : translateElement(selectedStroke, dragOffset) as CanvasImage
+            : selectedStroke
+          drawImageSelection(ctx, selectedPreview)
+        } else {
+          const offset = isDrawing && tool === 'cursor' ? dragOffset : { x: 0, y: 0 }
+          drawStrokeSelection(ctx, selectedStroke, offset)
+        }
       }
     }
-  }, [strokes, currentStroke, canvasColor, drawStroke, drawSelection, selectedStrokeIndex, isDrawing, tool, dragOffset])
+  }, [strokes, currentStroke, canvasColor, drawElement, drawImageSelection, drawStroke, drawStrokeSelection, selectedStrokeIndex, isDrawing, tool, dragOffset, transformPreview])
+
+  useEffect(() => {
+    renderCanvasRef.current = renderCanvas
+  }, [renderCanvas])
 
   useEffect(() => {
     renderCanvas()
@@ -387,7 +566,11 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     if (!coords) return
 
     if (tool === 'cursor') {
-      const strokeIndex = hitTestStroke(strokes, coords)
+      const selectedElement = selectedStrokeIndex === null ? null : strokes[selectedStrokeIndex]
+      const imageHandle = selectedElement && isCanvasImage(selectedElement)
+        ? hitTestImageHandle(selectedElement, coords)
+        : null
+      const strokeIndex = imageHandle ? selectedStrokeIndex : hitTestElement(strokes, coords)
       setSelectedStrokeIndex(strokeIndex)
       setCurrentStroke(null)
 
@@ -398,6 +581,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         draggedStrokeRef.current = null
         dragOffsetRef.current = { x: 0, y: 0 }
         setDragOffset({ x: 0, y: 0 })
+        transformPreviewRef.current = null
+        setTransformPreview(null)
         return
       }
 
@@ -405,8 +590,16 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       draggedStrokeIndexRef.current = strokeIndex
       dragStartRef.current = coords
       draggedStrokeRef.current = strokes[strokeIndex]
+      transformModeRef.current = imageHandle === 'rotate'
+        ? 'rotate'
+        : imageHandle
+          ? 'resize'
+          : 'move'
+      resizeHandleRef.current = imageHandle && imageHandle !== 'rotate' ? imageHandle : null
       dragOffsetRef.current = { x: 0, y: 0 }
       setDragOffset({ x: 0, y: 0 })
+      transformPreviewRef.current = null
+      setTransformPreview(null)
       return
     }
 
@@ -429,7 +622,55 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
     if (tool === 'cursor') {
       const dragStart = dragStartRef.current
-      if (!dragStart || draggedStrokeIndexRef.current === null) return
+      const originalElement = draggedStrokeRef.current
+      if (!dragStart || !originalElement || draggedStrokeIndexRef.current === null) return
+
+      if (isCanvasImage(originalElement) && transformModeRef.current === 'rotate') {
+        const center = imageCenter(originalElement)
+        const nextImage = {
+          ...originalElement,
+          rotation: Math.atan2(coords.y - center.y, coords.x - center.x) + Math.PI / 2
+        }
+        transformPreviewRef.current = nextImage
+        setTransformPreview(nextImage)
+        return
+      }
+
+      if (isCanvasImage(originalElement) && transformModeRef.current === 'resize') {
+        const handle = resizeHandleRef.current
+        if (!handle) return
+        const signs = {
+          nw: { x: -1, y: -1 }, ne: { x: 1, y: -1 },
+          se: { x: 1, y: 1 }, sw: { x: -1, y: 1 }
+        }[handle]
+        const originalCenter = imageCenter(originalElement)
+        const oppositeLocal = {
+          x: -signs.x * originalElement.width / 2,
+          y: -signs.y * originalElement.height / 2
+        }
+        const opposite = rotatePoint({
+          x: originalCenter.x + oppositeLocal.x,
+          y: originalCenter.y + oppositeLocal.y
+        }, originalCenter, originalElement.rotation)
+        const pointerLocal = rotatePoint(coords, opposite, -originalElement.rotation)
+        const width = Math.max(MIN_IMAGE_SIZE, signs.x * (pointerLocal.x - opposite.x))
+        const height = Math.max(MIN_IMAGE_SIZE, signs.y * (pointerLocal.y - opposite.y))
+        const nextCenterLocal = {
+          x: opposite.x + signs.x * width / 2,
+          y: opposite.y + signs.y * height / 2
+        }
+        const nextCenter = rotatePoint(nextCenterLocal, opposite, originalElement.rotation)
+        const nextImage = {
+          ...originalElement,
+          x: nextCenter.x - width / 2,
+          y: nextCenter.y - height / 2,
+          width,
+          height
+        }
+        transformPreviewRef.current = nextImage
+        setTransformPreview(nextImage)
+        return
+      }
 
       const nextOffset = {
         x: coords.x - dragStart.x,
@@ -474,23 +715,29 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
       const strokeIndex = draggedStrokeIndexRef.current
       const originalStroke = draggedStrokeRef.current
       const offset = dragOffsetRef.current
-      const hasMoved = offset.x !== 0 || offset.y !== 0
+      const preview = transformPreviewRef.current
+      const transformedStroke = preview ?? (originalStroke ? translateElement(originalStroke, offset) : null)
+      const hasChanged = Boolean(originalStroke && transformedStroke && (
+        preview || offset.x !== 0 || offset.y !== 0
+      ))
 
       setIsDrawing(false)
       dragStartRef.current = null
       draggedStrokeIndexRef.current = null
       draggedStrokeRef.current = null
+      resizeHandleRef.current = null
       dragOffsetRef.current = { x: 0, y: 0 }
       setDragOffset({ x: 0, y: 0 })
+      transformPreviewRef.current = null
+      setTransformPreview(null)
 
-      if (strokeIndex !== null && originalStroke && hasMoved) {
-        const movedStroke = translateStroke(originalStroke, offset)
-        setStrokes(prev => prev.map((stroke, index) => index === strokeIndex ? movedStroke : stroke))
+      if (strokeIndex !== null && originalStroke && transformedStroke && hasChanged) {
+        setStrokes(prev => prev.map((stroke, index) => index === strokeIndex ? transformedStroke : stroke))
         setUndoStack(prev => [...prev, {
-          type: 'move',
+          type: 'transform',
           index: strokeIndex,
           before: originalStroke,
-          after: movedStroke
+          after: transformedStroke
         }])
         setRedoStack([])
       }
@@ -555,7 +802,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     const stroke = strokes[strokeIndex]
     if (!stroke) return
 
-    copiedStrokeRef.current = cloneStroke(stroke)
+    copiedStrokeRef.current = cloneElement(stroke)
+    internalCopyActiveRef.current = true
     setHasCopiedStroke(true)
     setContextMenu(null)
   }, [strokes])
@@ -564,7 +812,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     const stroke = strokes[strokeIndex]
     if (!stroke) return
 
-    copiedStrokeRef.current = cloneStroke(stroke)
+    copiedStrokeRef.current = cloneElement(stroke)
+    internalCopyActiveRef.current = true
     setHasCopiedStroke(true)
     deleteStroke(strokeIndex)
   }, [deleteStroke, strokes])
@@ -573,9 +822,9 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     const copiedStroke = copiedStrokeRef.current
     if (!copiedStroke) return
 
-    const pastedStroke = translateStroke(copiedStroke, { x: 16, y: 16 })
+    const pastedStroke = translateElement(copiedStroke, { x: 16, y: 16 })
     const strokeIndex = strokes.length
-    copiedStrokeRef.current = cloneStroke(pastedStroke)
+    copiedStrokeRef.current = cloneElement(pastedStroke)
     setStrokes(prev => [...prev, pastedStroke])
     setUndoStack(prev => [...prev, { type: 'add', index: strokeIndex, stroke: pastedStroke }])
     setRedoStack([])
@@ -583,13 +832,79 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     setContextMenu(null)
   }, [strokes.length])
 
+  const pasteImage = useCallback(async (file: File) => {
+    try {
+      const normalized = await normalizePastedImage(file)
+      const container = containerRef.current
+      if (!container) return
+      const bounds = container.getBoundingClientRect()
+      const displayScale = Math.min(
+        1,
+        (bounds.width * 0.6) / normalized.width,
+        (bounds.height * 0.6) / normalized.height
+      )
+      const image: CanvasImage = {
+        type: 'image',
+        src: normalized.src,
+        width: normalized.width * displayScale,
+        height: normalized.height * displayScale,
+        x: (bounds.width - normalized.width * displayScale) / 2,
+        y: (bounds.height - normalized.height * displayScale) / 2,
+        rotation: 0
+      }
+      const imageIndex = canvasElementsRef.current.length
+      const nextElements = [...canvasElementsRef.current, image]
+      canvasElementsRef.current = nextElements
+      setStrokes(nextElements)
+      setUndoStack(previous => [...previous, { type: 'add', index: imageIndex, stroke: image }])
+      setRedoStack([])
+      setSelectedStrokeIndex(imageIndex)
+      setTool('cursor')
+      setContextMenu(null)
+    } catch (error) {
+      console.error('Failed to paste image:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.isContentEditable || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
+
+      if (internalCopyActiveRef.current && copiedStrokeRef.current) {
+        event.preventDefault()
+        pasteStroke()
+        return
+      }
+
+      const imageItem = Array.from(event.clipboardData?.items ?? [])
+        .find(item => item.kind === 'file' && item.type.startsWith('image/'))
+      const imageFile = imageItem?.getAsFile()
+      if (imageFile) {
+        event.preventDefault()
+        void pasteImage(imageFile)
+      }
+    }
+
+    const resetInternalCopy = () => {
+      internalCopyActiveRef.current = false
+    }
+
+    window.addEventListener('paste', handlePaste)
+    window.addEventListener('blur', resetInternalCopy)
+    return () => {
+      window.removeEventListener('paste', handlePaste)
+      window.removeEventListener('blur', resetInternalCopy)
+    }
+  }, [pasteImage, pasteStroke])
+
   const openContextMenu = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault()
     event.stopPropagation()
     const coords = getCoordinates(event)
     if (!coords) return
 
-    const strokeIndex = hitTestStroke(strokes, coords)
+    const strokeIndex = hitTestElement(strokes, coords)
     setSelectedStrokeIndex(strokeIndex)
 
     const menuWidth = 160
@@ -649,12 +964,6 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         }
       }
 
-      if (event.metaKey && event.key.toLowerCase() === 'v' && copiedStrokeRef.current) {
-        event.preventDefault()
-        pasteStroke()
-        return
-      }
-
       if (selectedStrokeIndex !== null && (event.key === 'Delete' || event.key === 'Backspace')) {
         event.preventDefault()
         deleteSelectedStroke()
@@ -673,7 +982,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [contextMenu, copyStroke, cutStroke, deleteSelectedStroke, pasteStroke, redo, selectedStrokeIndex, undo])
+  }, [contextMenu, copyStroke, cutStroke, deleteSelectedStroke, redo, selectedStrokeIndex, undo])
 
   const clearCanvas = () => {
     setStrokes([])

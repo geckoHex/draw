@@ -4,7 +4,7 @@ import Database from "better-sqlite3"
 import { randomUUID } from "node:crypto"
 import { mkdirSync, readFileSync } from "node:fs"
 import path from "node:path"
-import type { Account, AdminAccount, Board, Folder, Stroke } from "@/lib/data-types"
+import type { Account, AdminAccount, Board, CanvasElement, Folder } from "@/lib/data-types"
 
 interface BoardRow {
   id: string
@@ -182,7 +182,7 @@ function boardFromRow(row: BoardRow): Board {
     title: row.title,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    strokes: JSON.parse(row.strokes_json) as Stroke[],
+    strokes: JSON.parse(row.strokes_json) as CanvasElement[],
     folderId: row.folder_id,
   }
 }

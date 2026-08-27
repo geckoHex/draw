@@ -1,5 +1,5 @@
 {
-    "version": "3.5.0",
-    "commit_message": "Add paste action to the canvas context menu",
+    "version": "3.6.0",
+    "commit_message": "Add pasted image transforms to the canvas",
     "authored_by": "Codex"
 }

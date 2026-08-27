@@ -1,14 +1,34 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-import { type Stroke } from '@/lib/data-client'
+import { type CanvasElement, type CanvasImage } from '@/lib/data-client'
 import { useDarkCanvas } from '@/lib/interface-settings'
 
 const LIGHT_CANVAS_COLOR = '#ffffff'
 const DARK_CANVAS_COLOR = '#111318'
 
 interface BoardPreviewProps {
-  strokes: Stroke[]
+  strokes: CanvasElement[]
+}
+
+function isCanvasImage(element: CanvasElement): element is CanvasImage {
+  return element.type === 'image'
+}
+
+function imageCorners(image: CanvasImage) {
+  const centerX = image.x + image.width / 2
+  const centerY = image.y + image.height / 2
+  const cosine = Math.cos(image.rotation)
+  const sine = Math.sin(image.rotation)
+  return [
+    [-image.width / 2, -image.height / 2],
+    [image.width / 2, -image.height / 2],
+    [image.width / 2, image.height / 2],
+    [-image.width / 2, image.height / 2],
+  ].map(([x, y]) => ({
+    x: centerX + x * cosine - y * sine,
+    y: centerY + x * sine + y * cosine,
+  }))
 }
 
 export function BoardPreview({ strokes }: BoardPreviewProps) {
@@ -32,6 +52,7 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
     const canvas = canvasRef.current
     if (!canvas || dimensions.width === 0 || dimensions.height === 0) return
 
@@ -66,7 +87,8 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
     let hasPoints = false
 
     strokes.forEach(stroke => {
-      stroke.points.forEach(point => {
+      const points = isCanvasImage(stroke) ? imageCorners(stroke) : stroke.points
+      points.forEach(point => {
         hasPoints = true
         minX = Math.min(minX, point.x)
         minY = Math.min(minY, point.y)
@@ -98,23 +120,48 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
     ctx.translate(offsetX, offsetY)
     ctx.scale(scale, scale)
 
-    strokes.forEach(stroke => {
-      if (stroke.points.length < 1) return
+    const imageElements = strokes.filter(isCanvasImage)
+    Promise.all(imageElements.map(imageElement => new Promise<[CanvasImage, HTMLImageElement] | null>((resolve) => {
+      const image = new Image()
+      image.onload = () => resolve([imageElement, image])
+      image.onerror = () => resolve(null)
+      image.src = imageElement.src
+    }))).then(loadedImages => {
+      if (cancelled) return
+      const images = new Map(loadedImages.flatMap(entry => entry ? [[entry[0].src, entry[1]] as const] : []))
+      strokes.forEach(stroke => {
+        if (isCanvasImage(stroke)) {
+          const image = images.get(stroke.src)
+          if (!image) return
+          const centerX = stroke.x + stroke.width / 2
+          const centerY = stroke.y + stroke.height / 2
+          ctx.save()
+          ctx.translate(centerX, centerY)
+          ctx.rotate(stroke.rotation)
+          ctx.drawImage(image, -stroke.width / 2, -stroke.height / 2, stroke.width, stroke.height)
+          ctx.restore()
+          return
+        }
+        if (stroke.points.length < 1) return
 
-      ctx.beginPath()
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      ctx.strokeStyle = stroke.tool === 'eraser' ? canvasColor : stroke.color
-      ctx.lineWidth = stroke.size
+        ctx.beginPath()
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        ctx.strokeStyle = stroke.tool === 'eraser' ? canvasColor : stroke.color
+        ctx.lineWidth = stroke.size
 
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
-      for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
-      }
-      ctx.stroke()
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
+        }
+        ctx.stroke()
+      })
+      ctx.restore()
     })
 
-    ctx.restore()
+    return () => {
+      cancelled = true
+    }
 
   }, [strokes, dimensions, canvasColor, darkCanvas])
 

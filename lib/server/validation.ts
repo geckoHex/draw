@@ -1,4 +1,4 @@
-import type { Board, Folder, Point, Stroke } from "@/lib/data-types"
+import type { Board, CanvasElement, CanvasImage, Folder, Point, Stroke } from "@/lib/data-types"
 
 export class RequestValidationError extends Error {}
 
@@ -31,11 +31,44 @@ function parseStroke(value: unknown): Stroke {
   }
 
   return {
+    ...(value.type === "stroke" ? { type: "stroke" as const } : {}),
     points: value.points.map(parsePoint),
     color: value.color,
     size: Number(value.size),
     tool: value.tool,
   }
+}
+
+function parseImage(value: Record<string, unknown>): CanvasImage {
+  if (
+    typeof value.src !== "string"
+    || value.src.length > 15_000_000
+    || !/^data:image\/(?:png|jpeg|webp);base64,/i.test(value.src)
+    || !Number.isFinite(value.x)
+    || !Number.isFinite(value.y)
+    || !Number.isFinite(value.width)
+    || !Number.isFinite(value.height)
+    || Number(value.width) <= 0
+    || Number(value.height) <= 0
+    || !Number.isFinite(value.rotation)
+  ) {
+    throw new RequestValidationError("The board contains an invalid image.")
+  }
+
+  return {
+    type: "image",
+    src: value.src,
+    x: Number(value.x),
+    y: Number(value.y),
+    width: Number(value.width),
+    height: Number(value.height),
+    rotation: Number(value.rotation),
+  }
+}
+
+function parseCanvasElement(value: unknown): CanvasElement {
+  if (isRecord(value) && value.type === "image") return parseImage(value)
+  return parseStroke(value)
 }
 
 export function parseBoard(value: unknown, expectedId: string): Board {
@@ -57,7 +90,7 @@ export function parseBoard(value: unknown, expectedId: string): Board {
     title: value.title,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
-    strokes: value.strokes.map(parseStroke),
+    strokes: value.strokes.map(parseCanvasElement),
     folderId: value.folderId,
   }
 }
