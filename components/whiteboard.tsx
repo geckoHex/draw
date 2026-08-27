@@ -116,7 +116,7 @@ type CanvasAction =
 interface CanvasContextMenu {
   x: number
   y: number
-  strokeIndex: number
+  strokeIndex: number | null
 }
 
 function applyCanvasAction(strokes: Stroke[], action: CanvasAction, direction: 'undo' | 'redo') {
@@ -182,6 +182,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [selectedStrokeIndex, setSelectedStrokeIndex] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 })
   const [contextMenu, setContextMenu] = useState<CanvasContextMenu | null>(null)
+  const [hasCopiedStroke, setHasCopiedStroke] = useState(false)
   
   const [showClearModal, setShowClearModal] = useState(false)
   
@@ -555,6 +556,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     if (!stroke) return
 
     copiedStrokeRef.current = cloneStroke(stroke)
+    setHasCopiedStroke(true)
     setContextMenu(null)
   }, [strokes])
 
@@ -563,6 +565,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     if (!stroke) return
 
     copiedStrokeRef.current = cloneStroke(stroke)
+    setHasCopiedStroke(true)
     deleteStroke(strokeIndex)
   }, [deleteStroke, strokes])
 
@@ -589,13 +592,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     const strokeIndex = hitTestStroke(strokes, coords)
     setSelectedStrokeIndex(strokeIndex)
 
-    if (strokeIndex === null) {
-      setContextMenu(null)
-      return
-    }
-
     const menuWidth = 160
-    const menuHeight = 120
+    const menuHeight = 160
     setContextMenu({
       x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
       y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
@@ -749,24 +747,42 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
-            onClick={() => copyStroke(contextMenu.strokeIndex)}
+            disabled={contextMenu.strokeIndex === null}
+            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-50"
+            onClick={() => {
+              if (contextMenu.strokeIndex !== null) copyStroke(contextMenu.strokeIndex)
+            }}
           >
             Copy
           </button>
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
-            onClick={() => cutStroke(contextMenu.strokeIndex)}
+            disabled={contextMenu.strokeIndex === null}
+            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-50"
+            onClick={() => {
+              if (contextMenu.strokeIndex !== null) cutStroke(contextMenu.strokeIndex)
+            }}
           >
             Cut
           </button>
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-accent focus-visible:bg-accent"
-            onClick={() => deleteStroke(contextMenu.strokeIndex)}
+            disabled={!hasCopiedStroke}
+            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-50"
+            onClick={pasteStroke}
+          >
+            Paste
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={contextMenu.strokeIndex === null}
+            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-accent focus-visible:bg-accent disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-50"
+            onClick={() => {
+              if (contextMenu.strokeIndex !== null) deleteStroke(contextMenu.strokeIndex)
+            }}
           >
             Delete
           </button>

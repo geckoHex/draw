@@ -1,5 +1,5 @@
 {
-    "version": "3.4.1",
-    "commit_message": "Fix drawing context menu interception",
+    "version": "3.5.0",
+    "commit_message": "Add paste action to the canvas context menu",
     "authored_by": "Codex"
 }
