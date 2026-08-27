@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { DropdownMenu, DropdownMenuItem, type ContextMenuPoint } from '@/components/ui/dropdown-menu'
 import { saveBoard, getBoard, type Stroke, type Point } from '@/lib/data-client'
 import { useRouter } from 'next/navigation'
 import { generateBoardName } from '@/lib/name-generator'
@@ -101,6 +102,11 @@ function translateStroke(stroke: Stroke, offset: Point): Stroke {
 
 type Tool = 'cursor' | 'pen' | 'eraser'
 
+interface CanvasContextMenu extends ContextMenuPoint {
+  canvasPoint: Point
+  strokeIndex: number | null
+}
+
 type CanvasAction =
   | { type: 'add'; index: number; stroke: Stroke }
   | { type: 'delete'; index: number; stroke: Stroke }
@@ -166,6 +172,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [selectedStrokeIndex, setSelectedStrokeIndex] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 })
+  const [clipboardStroke, setClipboardStroke] = useState<Stroke | null>(null)
+  const [contextMenu, setContextMenu] = useState<CanvasContextMenu | null>(null)
   
   const [showClearModal, setShowClearModal] = useState(false)
   
@@ -363,6 +371,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
+    if ('button' in e && e.button !== 0) return
+    setContextMenu(null)
     const coords = getCoordinates(e)
     if (!coords) return
 
@@ -508,24 +518,71 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     setSelectedStrokeIndex(null)
   }, [redoStack])
 
-  const deleteSelectedStroke = useCallback(() => {
-    if (selectedStrokeIndex === null) return
+  const deleteStroke = useCallback((strokeIndex: number | null) => {
+    if (strokeIndex === null) return
 
-    const selectedStroke = strokes[selectedStrokeIndex]
+    const selectedStroke = strokes[strokeIndex]
     if (!selectedStroke) {
       setSelectedStrokeIndex(null)
       return
     }
 
-    setStrokes(prev => prev.filter((_, index) => index !== selectedStrokeIndex))
+    setStrokes(prev => prev.filter((_, index) => index !== strokeIndex))
     setUndoStack(prev => [...prev, {
       type: 'delete',
-      index: selectedStrokeIndex,
+      index: strokeIndex,
       stroke: selectedStroke
     }])
     setRedoStack([])
     setSelectedStrokeIndex(null)
-  }, [selectedStrokeIndex, strokes])
+  }, [strokes])
+
+  const deleteSelectedStroke = useCallback(() => {
+    deleteStroke(selectedStrokeIndex)
+  }, [deleteStroke, selectedStrokeIndex])
+
+  const copyContextStroke = useCallback(() => {
+    if (contextMenu?.strokeIndex === null || contextMenu?.strokeIndex === undefined) return
+    const stroke = strokes[contextMenu.strokeIndex]
+    if (stroke) setClipboardStroke(structuredClone(stroke))
+  }, [contextMenu, strokes])
+
+  const cutContextStroke = useCallback(() => {
+    copyContextStroke()
+    deleteStroke(contextMenu?.strokeIndex ?? null)
+  }, [contextMenu, copyContextStroke, deleteStroke])
+
+  const pasteContextStroke = useCallback(() => {
+    if (!clipboardStroke || !contextMenu) return
+
+    const firstPoint = clipboardStroke.points[0]
+    if (!firstPoint) return
+
+    const pastedStroke = translateStroke(structuredClone(clipboardStroke), {
+      x: contextMenu.canvasPoint.x - firstPoint.x,
+      y: contextMenu.canvasPoint.y - firstPoint.y
+    })
+    const strokeIndex = strokes.length
+    setStrokes(prev => [...prev, pastedStroke])
+    setUndoStack(prev => [...prev, { type: 'add', index: strokeIndex, stroke: pastedStroke }])
+    setRedoStack([])
+    setSelectedStrokeIndex(strokeIndex)
+  }, [clipboardStroke, contextMenu, strokes.length])
+
+  const openContextMenu = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault()
+    const canvasPoint = getCoordinates(event)
+    if (!canvasPoint) return
+
+    const strokeIndex = hitTestStroke(strokes, canvasPoint)
+    setSelectedStrokeIndex(strokeIndex)
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      canvasPoint,
+      strokeIndex
+    })
+  }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -601,17 +658,41 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           className="relative h-[calc(100vh-2rem)] w-full overflow-hidden rounded-2xl border border-border/50 shadow-lg"
           style={{ ...cursorStyle, backgroundColor: canvasColor }}
         >
-          <canvas
-            ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            className="absolute top-0 left-0 touch-none"
-          />
+          <DropdownMenu
+            contextMenuPoint={contextMenu}
+            onContextMenuClose={() => setContextMenu(null)}
+            trigger={
+              <canvas
+                ref={canvasRef}
+                onContextMenu={openContextMenu}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                className="absolute top-0 left-0 touch-none"
+              />
+            }
+          >
+            <DropdownMenuItem disabled={contextMenu?.strokeIndex == null} onClick={copyContextStroke}>
+              Copy
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={contextMenu?.strokeIndex == null} onClick={cutContextStroke}>
+              Cut
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!clipboardStroke} onClick={pasteContextStroke}>
+              Paste
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={contextMenu?.strokeIndex == null}
+              variant="destructive"
+              onClick={() => deleteStroke(contextMenu?.strokeIndex ?? null)}
+            >
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenu>
         </div>
       </div>
 

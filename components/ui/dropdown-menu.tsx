@@ -87,26 +87,29 @@ interface DropdownMenuItemProps {
   onClick?: (e: React.MouseEvent) => void
   variant?: "default" | "destructive"
   icon?: React.ReactNode
+  disabled?: boolean
 }
 
 export function DropdownMenuItem({ 
   children, 
   onClick, 
   variant = "default",
-  icon 
+  icon,
+  disabled = false,
 }: DropdownMenuItemProps) {
   const closeMenu = React.useContext(DropdownMenuContext)
 
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={(event) => {
         event.stopPropagation()
         onClick?.(event)
         closeMenu?.()
       }}
       className={cn(
-        "flex h-8 w-full items-center justify-start gap-1.5 rounded-md px-3 text-left text-sm font-medium transition-colors",
+        "flex h-8 w-full items-center justify-start gap-1.5 rounded-md px-3 text-left text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-40",
         variant === "destructive"
           ? "text-destructive hover:bg-destructive/10 hover:text-destructive"
           : "text-popover-foreground hover:bg-accent"

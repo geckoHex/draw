@@ -1,5 +1,5 @@
 {
-    "version": "3.3.0",
-    "commit_message": "Add cursor path selection and movement",
+    "version": "3.4.0",
+    "commit_message": "Add canvas context menu actions",
     "authored_by": "Codex"
 }
