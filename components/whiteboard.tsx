@@ -23,6 +23,7 @@ const IMAGE_HANDLE_RADIUS = 7
 const IMAGE_ROTATION_HANDLE_OFFSET = 30
 const MIN_IMAGE_SIZE = 24
 const MAX_PASTED_IMAGE_DIMENSION = 2400
+const SELECTED_CONTROL_CLASS = 'bg-foreground text-background hover:bg-foreground hover:text-background dark:hover:bg-foreground dark:hover:text-background'
 
 function snapToCardinalAngle(start: Point, end: Point): Point {
   const deltaX = end.x - start.x
@@ -1258,41 +1259,47 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
             <div className="grid grid-cols-4 w-full gap-1">
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => setTool('cursor')}
+                  aria-label="Select"
                   aria-pressed={tool === 'cursor'}
-                  className={`px-1 text-xs shadow-none ${tool === 'cursor' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}
+                  title="Select"
+                  className={`h-8 w-full shadow-none ${tool === 'cursor' ? SELECTED_CONTROL_CLASS : 'bg-transparent text-muted-foreground'}`}
                 >
-                    <MousePointer2 className="h-4 w-4" /> Select
+                    <MousePointer2 className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => {
                     setTool('pen')
                     setBrushSize([penSize])
                     setSelectedStrokeIndex(null)
                   }}
+                  aria-label="Pen"
                   aria-pressed={tool === 'pen'}
-                  className={`px-1 text-xs shadow-none ${tool === 'pen' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}
+                  title="Pen"
+                  className={`h-8 w-full shadow-none ${tool === 'pen' ? SELECTED_CONTROL_CLASS : 'bg-transparent text-muted-foreground'}`}
                 >
-                    <Pen className="h-4 w-4" /> Pen
+                    <Pen className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={() => {
                     setTool('eraser')
                     setBrushSize([eraserSize])
                     setSelectedStrokeIndex(null)
                   }}
+                  aria-label="Eraser"
                   aria-pressed={tool === 'eraser'}
-                  className={`px-1 text-xs shadow-none ${tool === 'eraser' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}
+                  title="Eraser"
+                  className={`h-8 w-full shadow-none ${tool === 'eraser' ? SELECTED_CONTROL_CLASS : 'bg-transparent text-muted-foreground'}`}
                 >
-                    <Eraser className="h-4 w-4" /> Eraser
+                    <Eraser className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => { setTool('bucket'); setSelectedStrokeIndex(null) }} aria-pressed={tool === 'bucket'} title="Paint bucket" className={`px-1 text-xs shadow-none ${tool === 'bucket' ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}>
-                  <PaintBucket className="h-4 w-4" /> Fill
+                <Button variant="ghost" size="icon" onClick={() => { setTool('bucket'); setSelectedStrokeIndex(null) }} aria-label="Fill" aria-pressed={tool === 'bucket'} title="Fill" className={`h-8 w-full shadow-none ${tool === 'bucket' ? SELECTED_CONTROL_CLASS : 'bg-transparent text-muted-foreground'}`}>
+                  <PaintBucket className="h-4 w-4" />
                 </Button>
             </div>
           </div>
@@ -1300,19 +1307,21 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Drawing tools</h2>
-          <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted/50 p-1">
-            {([
-              ['rectangle', RectangleHorizontal], ['circle', Circle], ['triangle', Triangle], ['line', Minus],
-            ] as const).map(([kind, Icon]) => (
-              <Button key={kind} variant="ghost" size="icon" title={kind[0].toUpperCase() + kind.slice(1)} aria-label={kind} aria-pressed={tool === 'shape' && shapeKind === kind} onClick={() => { setShapeKind(kind); setTool('shape'); setSelectedStrokeIndex(null) }} className={`h-8 w-full shadow-none ${tool === 'shape' && shapeKind === kind ? 'bg-background text-foreground' : 'bg-transparent text-muted-foreground'}`}>
-                <Icon className="h-4 w-4" />
-              </Button>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-1">
-            {(['transparent', 'opaque', 'filled'] as ShapeFill[]).map(fill => (
-              <Button key={fill} variant={shapeFill === fill ? 'secondary' : 'ghost'} size="sm" onClick={() => setShapeFill(fill)} className="h-8 px-1 text-xs capitalize shadow-none">{fill}</Button>
-            ))}
+          <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-1">
+            <div className="grid grid-cols-4 gap-1">
+              {([
+                ['rectangle', RectangleHorizontal], ['circle', Circle], ['triangle', Triangle], ['line', Minus],
+              ] as const).map(([kind, Icon]) => (
+                <Button key={kind} variant="ghost" size="icon" title={kind[0].toUpperCase() + kind.slice(1)} aria-label={kind} aria-pressed={tool === 'shape' && shapeKind === kind} onClick={() => { setShapeKind(kind); setTool('shape'); setSelectedStrokeIndex(null) }} className={`h-8 w-full shadow-none ${tool === 'shape' && shapeKind === kind ? SELECTED_CONTROL_CLASS : 'bg-transparent text-muted-foreground'}`}>
+                  <Icon className="h-4 w-4" />
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {(['transparent', 'opaque', 'filled'] as ShapeFill[]).map(fill => (
+                <Button key={fill} variant="ghost" size="sm" aria-pressed={shapeFill === fill} onClick={() => setShapeFill(fill)} className={`h-8 px-1 text-xs capitalize shadow-none ${shapeFill === fill ? SELECTED_CONTROL_CLASS : 'bg-transparent text-muted-foreground'}`}>{fill}</Button>
+              ))}
+            </div>
           </div>
         </div>
 

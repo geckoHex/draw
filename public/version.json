@@ -1,5 +1,5 @@
 {
-    "version": "3.7.1",
-    "commit_message": "Fix board and folder creation over LAN connections",
+    "version": "3.7.4",
+    "commit_message": "Resolve version conflict for sidebar contrast and LAN creation fixes",
     "authored_by": "Codex"
 }
