@@ -1,5 +1,5 @@
 {
-    "version": "3.3.0",
-    "commit_message": "Add cursor path selection and movement",
+    "version": "3.4.1",
+    "commit_message": "Fix drawing context menu interception",
     "authored_by": "Codex"
 }

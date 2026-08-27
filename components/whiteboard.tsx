@@ -99,12 +99,25 @@ function translateStroke(stroke: Stroke, offset: Point): Stroke {
   }
 }
 
+function cloneStroke(stroke: Stroke): Stroke {
+  return {
+    ...stroke,
+    points: stroke.points.map(point => ({ ...point }))
+  }
+}
+
 type Tool = 'cursor' | 'pen' | 'eraser'
 
 type CanvasAction =
   | { type: 'add'; index: number; stroke: Stroke }
   | { type: 'delete'; index: number; stroke: Stroke }
   | { type: 'move'; index: number; before: Stroke; after: Stroke }
+
+interface CanvasContextMenu {
+  x: number
+  y: number
+  strokeIndex: number
+}
 
 function applyCanvasAction(strokes: Stroke[], action: CanvasAction, direction: 'undo' | 'redo') {
   const nextStrokes = [...strokes]
@@ -141,6 +154,8 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const dragStartRef = useRef<Point | null>(null)
   const draggedStrokeRef = useRef<Stroke | null>(null)
   const dragOffsetRef = useRef<Point>({ x: 0, y: 0 })
+  const copiedStrokeRef = useRef<Stroke | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
   const [brushSize, setBrushSize] = useState([5])
@@ -166,6 +181,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null)
   const [selectedStrokeIndex, setSelectedStrokeIndex] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 })
+  const [contextMenu, setContextMenu] = useState<CanvasContextMenu | null>(null)
   
   const [showClearModal, setShowClearModal] = useState(false)
   
@@ -362,7 +378,10 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
   }
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    if ('button' in e && e.button !== 0) return
+
     e.preventDefault()
+    setContextMenu(null)
     const coords = getCoordinates(e)
     if (!coords) return
 
@@ -508,24 +527,100 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
     setSelectedStrokeIndex(null)
   }, [redoStack])
 
-  const deleteSelectedStroke = useCallback(() => {
-    if (selectedStrokeIndex === null) return
-
-    const selectedStroke = strokes[selectedStrokeIndex]
+  const deleteStroke = useCallback((strokeIndex: number) => {
+    const selectedStroke = strokes[strokeIndex]
     if (!selectedStroke) {
       setSelectedStrokeIndex(null)
       return
     }
 
-    setStrokes(prev => prev.filter((_, index) => index !== selectedStrokeIndex))
+    setStrokes(prev => prev.filter((_, index) => index !== strokeIndex))
     setUndoStack(prev => [...prev, {
       type: 'delete',
-      index: selectedStrokeIndex,
+      index: strokeIndex,
       stroke: selectedStroke
     }])
     setRedoStack([])
     setSelectedStrokeIndex(null)
-  }, [selectedStrokeIndex, strokes])
+    setContextMenu(null)
+  }, [strokes])
+
+  const deleteSelectedStroke = useCallback(() => {
+    if (selectedStrokeIndex === null) return
+    deleteStroke(selectedStrokeIndex)
+  }, [deleteStroke, selectedStrokeIndex])
+
+  const copyStroke = useCallback((strokeIndex: number) => {
+    const stroke = strokes[strokeIndex]
+    if (!stroke) return
+
+    copiedStrokeRef.current = cloneStroke(stroke)
+    setContextMenu(null)
+  }, [strokes])
+
+  const cutStroke = useCallback((strokeIndex: number) => {
+    const stroke = strokes[strokeIndex]
+    if (!stroke) return
+
+    copiedStrokeRef.current = cloneStroke(stroke)
+    deleteStroke(strokeIndex)
+  }, [deleteStroke, strokes])
+
+  const pasteStroke = useCallback(() => {
+    const copiedStroke = copiedStrokeRef.current
+    if (!copiedStroke) return
+
+    const pastedStroke = translateStroke(copiedStroke, { x: 16, y: 16 })
+    const strokeIndex = strokes.length
+    copiedStrokeRef.current = cloneStroke(pastedStroke)
+    setStrokes(prev => [...prev, pastedStroke])
+    setUndoStack(prev => [...prev, { type: 'add', index: strokeIndex, stroke: pastedStroke }])
+    setRedoStack([])
+    setSelectedStrokeIndex(strokeIndex)
+    setContextMenu(null)
+  }, [strokes.length])
+
+  const openContextMenu = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const coords = getCoordinates(event)
+    if (!coords) return
+
+    const strokeIndex = hitTestStroke(strokes, coords)
+    setSelectedStrokeIndex(strokeIndex)
+
+    if (strokeIndex === null) {
+      setContextMenu(null)
+      return
+    }
+
+    const menuWidth = 160
+    const menuHeight = 120
+    setContextMenu({
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+      strokeIndex
+    })
+  }
+
+  useEffect(() => {
+    if (!contextMenu) return
+
+    const closeContextMenu = (event: PointerEvent) => {
+      if (contextMenuRef.current?.contains(event.target as Node)) return
+      setContextMenu(null)
+    }
+    const closeOnViewportChange = () => setContextMenu(null)
+
+    window.addEventListener('pointerdown', closeContextMenu)
+    window.addEventListener('resize', closeOnViewportChange)
+    window.addEventListener('blur', closeOnViewportChange)
+    return () => {
+      window.removeEventListener('pointerdown', closeContextMenu)
+      window.removeEventListener('resize', closeOnViewportChange)
+      window.removeEventListener('blur', closeOnViewportChange)
+    }
+  }, [contextMenu])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -535,6 +630,32 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
         || target?.tagName === 'TEXTAREA'
 
       if (isEditingText) return
+
+      if (event.key === 'Escape' && contextMenu) {
+        event.preventDefault()
+        setContextMenu(null)
+        return
+      }
+
+      if (event.metaKey && selectedStrokeIndex !== null) {
+        const key = event.key.toLowerCase()
+        if (key === 'c') {
+          event.preventDefault()
+          copyStroke(selectedStrokeIndex)
+          return
+        }
+        if (key === 'x') {
+          event.preventDefault()
+          cutStroke(selectedStrokeIndex)
+          return
+        }
+      }
+
+      if (event.metaKey && event.key.toLowerCase() === 'v' && copiedStrokeRef.current) {
+        event.preventDefault()
+        pasteStroke()
+        return
+      }
 
       if (selectedStrokeIndex !== null && (event.key === 'Delete' || event.key === 'Backspace')) {
         event.preventDefault()
@@ -554,7 +675,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteSelectedStroke, redo, selectedStrokeIndex, undo])
+  }, [contextMenu, copyStroke, cutStroke, deleteSelectedStroke, pasteStroke, redo, selectedStrokeIndex, undo])
 
   const clearCanvas = () => {
     setStrokes([])
@@ -600,6 +721,7 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           ref={containerRef}
           className="relative h-[calc(100vh-2rem)] w-full overflow-hidden rounded-2xl border border-border/50 shadow-lg"
           style={{ ...cursorStyle, backgroundColor: canvasColor }}
+          onContextMenuCapture={openContextMenu}
         >
           <canvas
             ref={canvasRef}
@@ -614,6 +736,42 @@ export function Whiteboard({ boardId }: WhiteboardProps) {
           />
         </div>
       </div>
+
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          role="menu"
+          aria-label="Drawing actions"
+          className="fixed z-50 w-40 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onContextMenu={event => event.preventDefault()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+            onClick={() => copyStroke(contextMenu.strokeIndex)}
+          >
+            Copy
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+            onClick={() => cutStroke(contextMenu.strokeIndex)}
+          >
+            Cut
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-accent focus-visible:bg-accent"
+            onClick={() => deleteStroke(contextMenu.strokeIndex)}
+          >
+            Delete
+          </button>
+        </div>
+      )}
 
       {/* Sidebar */}
       <Card className="m-4 flex h-[calc(100vh-2rem)] w-64 shrink-0 flex-col gap-4 rounded-2xl border border-border bg-card/88 p-4 shadow-lg backdrop-blur-xl z-10">
