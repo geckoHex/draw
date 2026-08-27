@@ -1,5 +1,5 @@
 {
-    "version": "3.8.1",
-    "commit_message": "Resolve version conflict for translucent fills, sidebar contrast, and LAN creation fixes",
+    "version": "3.8.2",
+    "commit_message": "Fix LAN serving for IPv4 and IPv6 clients",
     "authored_by": "Codex"
 }

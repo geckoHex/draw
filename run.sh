@@ -27,7 +27,9 @@ SERVER_HOST="$(node -e '
     if (typeof config.SERVE_LAN !== "boolean") {
       throw new TypeError("SERVE_LAN must be a boolean");
     }
-    process.stdout.write(config.SERVE_LAN ? "0.0.0.0" : "127.0.0.1");
+    // The IPv6 wildcard creates a dual-stack listener on macOS, allowing LAN
+    // clients to connect over either IPv6 or IPv4.
+    process.stdout.write(config.SERVE_LAN ? "::" : "127.0.0.1");
   } catch (error) {
     console.error(`Unable to read ${configPath}: ${error.message}`);
     process.exit(1);
