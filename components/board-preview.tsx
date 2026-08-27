@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-import { type CanvasElement, type CanvasImage } from '@/lib/data-client'
+import { type CanvasElement, type CanvasImage, type CanvasShape } from '@/lib/data-client'
 import { useDarkCanvas } from '@/lib/interface-settings'
 
 const LIGHT_CANVAS_COLOR = '#ffffff'
@@ -13,6 +13,20 @@ interface BoardPreviewProps {
 
 function isCanvasImage(element: CanvasElement): element is CanvasImage {
   return element.type === 'image'
+}
+
+function isCanvasShape(element: CanvasElement): element is CanvasShape { return element.type === 'shape' }
+
+function drawShape(ctx: CanvasRenderingContext2D, shape: CanvasShape, canvasColor: string) {
+  const left = Math.min(shape.start.x, shape.end.x), top = Math.min(shape.start.y, shape.end.y)
+  const width = Math.abs(shape.end.x - shape.start.x), height = Math.abs(shape.end.y - shape.start.y)
+  ctx.beginPath()
+  if (shape.shape === 'rectangle') ctx.rect(left, top, width, height)
+  if (shape.shape === 'circle') ctx.ellipse(left + width / 2, top + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2)
+  if (shape.shape === 'triangle') { ctx.moveTo(left + width / 2, top); ctx.lineTo(left + width, top + height); ctx.lineTo(left, top + height); ctx.closePath() }
+  if (shape.shape === 'line') { ctx.moveTo(shape.start.x, shape.start.y); ctx.lineTo(shape.end.x, shape.end.y) }
+  if (shape.fill !== 'transparent' && shape.shape !== 'line') { ctx.fillStyle = shape.fill === 'filled' ? shape.color : canvasColor; ctx.fill() }
+  ctx.strokeStyle = shape.color; ctx.lineWidth = shape.size; ctx.stroke()
 }
 
 function imageCorners(image: CanvasImage) {
@@ -87,7 +101,7 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
     let hasPoints = false
 
     strokes.forEach(stroke => {
-      const points = isCanvasImage(stroke) ? imageCorners(stroke) : stroke.points
+      const points = isCanvasImage(stroke) ? imageCorners(stroke) : isCanvasShape(stroke) ? [stroke.start, stroke.end] : stroke.points
       points.forEach(point => {
         hasPoints = true
         minX = Math.min(minX, point.x)
@@ -129,7 +143,8 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
     }))).then(loadedImages => {
       if (cancelled) return
       const images = new Map(loadedImages.flatMap(entry => entry ? [[entry[0].src, entry[1]] as const] : []))
-      strokes.forEach(stroke => {
+      const ordered = [...strokes].sort((a, b) => Number(!isCanvasShape(a) && !isCanvasImage(a)) - Number(!isCanvasShape(b) && !isCanvasImage(b)))
+      ordered.forEach(stroke => {
         if (isCanvasImage(stroke)) {
           const image = images.get(stroke.src)
           if (!image) return
@@ -140,6 +155,10 @@ export function BoardPreview({ strokes }: BoardPreviewProps) {
           ctx.rotate(stroke.rotation)
           ctx.drawImage(image, -stroke.width / 2, -stroke.height / 2, stroke.width, stroke.height)
           ctx.restore()
+          return
+        }
+        if (isCanvasShape(stroke)) {
+          drawShape(ctx, stroke, canvasColor)
           return
         }
         if (stroke.points.length < 1) return

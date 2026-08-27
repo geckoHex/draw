@@ -1,5 +1,5 @@
 {
-    "version": "3.6.0",
-    "commit_message": "Add pasted image transforms to the canvas",
+    "version": "3.7.0",
+    "commit_message": "Add canvas shape and paint bucket tools",
     "authored_by": "Codex"
 }
