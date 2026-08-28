@@ -1,5 +1,5 @@
 {
-    "version": "3.7.0",
-    "commit_message": "Add canvas shape and paint bucket tools",
+    "version": "3.7.1",
+    "commit_message": "Fix board and folder creation over LAN connections",
     "authored_by": "Codex"
 }
