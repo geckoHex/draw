@@ -31,6 +31,7 @@ import { FolderCard } from "@/components/folder-card";
 import { FolderModal } from "@/components/folder-modal";
 import { VersionInfo } from "@/components/version-info";
 import { getFolderAccent, getFolderTint } from "@/lib/utils";
+import { createClientId } from "@/lib/client-id";
 
 const BOARDS_PER_PAGE = 20;
 
@@ -224,7 +225,7 @@ export default function Home() {
   }, [hasMore, isLoading, loadMoreBoards]);
 
   const createNewBoard = async () => {
-    const id = crypto.randomUUID();
+    const id = createClientId();
     const timestamp = Date.now();
 
     try {
@@ -298,7 +299,7 @@ export default function Home() {
 
   const handleCreateFolder = async (name: string, color: string) => {
     const newFolder: Folder = {
-      id: crypto.randomUUID(),
+      id: createClientId(),
       name,
       color,
       createdAt: Date.now(),
