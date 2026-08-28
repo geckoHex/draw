@@ -1,5 +1,5 @@
 {
-    "version": "3.8.2",
-    "commit_message": "Fix LAN serving for IPv4 and IPv6 clients",
+    "version": "3.8.3",
+    "commit_message": "Dock the home navbar flush to the top of the screen",
     "authored_by": "Codex"
 }

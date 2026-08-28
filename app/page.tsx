@@ -375,8 +375,8 @@ export default function Home() {
   return (
     <main className="app-background min-h-screen px-8 pb-8 pt-32 md:px-12 md:pb-12 md:pt-36 relative overflow-hidden">
 
-      <div className="fixed inset-x-4 top-4 z-50 md:inset-x-8 md:top-6">
-        <div className="glass-surface mx-auto grid max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-3xl border p-3 backdrop-blur-xl md:gap-6 md:px-5">
+      <div className="fixed inset-x-4 top-0 z-50 md:inset-x-8">
+        <div className="glass-surface mx-auto grid max-w-[1600px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-b-3xl border p-3 backdrop-blur-xl md:gap-6 md:px-5">
           <div className="flex items-center gap-2 whitespace-nowrap">
             <Image
               src="/images/Gecko.png"
